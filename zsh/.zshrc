@@ -92,7 +92,7 @@ plugins=(
     git
     github
     gitignore
-    history-substring-search
+    fzf
     node
     npm
     nvm
@@ -104,6 +104,7 @@ plugins=(
     z
     zsh-autosuggestions
     zsh-syntax-highlighting
+    zsh-history-substring-search
     ohmyzsh-full-autoupdate
 )
 
@@ -137,14 +138,19 @@ source $ZSH/oh-my-zsh.sh
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
-alias upev='sudo apt update -y && sudo apt full-upgrade -y && sudo apt autoremove -y && sudo apt clean -y && sudo apt autoclean -y'
-# alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
-alias cdde='cd /mnt/c/Users/justi/Desktop/';
-alias cddo='cd /mnt/c/Users/justi/Downloads/';
+alias conf="nvim ~/dotfiles/zsh/.zshrc"
+alias upev="sudo apt update -y && sudo apt full-upgrade -y && sudo apt autoremove -y && sudo apt clean -y && sudo apt autoclean -y"
+
+alias ls="eza -alh --color=auto --group-directories-first --icons"
+alias lh="eza -alh --color=auto --group-directories-first --icons"
+alias l="eza -alh --color=auto --group-directories-first --icons"
+alias :q="exit"
+
+alias cdde="cd /mnt/c/Users/justi/Desktop/";
+alias cddo="cd /mnt/c/Users/justi/Downloads/";
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-
 
 export PATH="$PATH:$HOME/.nvim/bin"
 
