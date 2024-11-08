@@ -104,12 +104,15 @@ vim.api.nvim_exec2(
   {}
 )
 
--- for CP
+-- for CP - to add & edit testcase just use CompetiTest commands directly
 vim.keymap.set('n', '<M-k>', '<cmd>!rm testcases/%<_input*.txt testcases/%<_output*.txt<CR>')
 vim.keymap.set('n', '<M-a>', '<cmd>CompetiTest receive testcases<CR>')
 vim.keymap.set('n', '<M-r>', '<cmd>CompetiTest run<CR>')
-vim.keymap.set('n', '<M-R>', '<cmd>silent !tmux send-keys -t bottom "g++ --std=c++20 -o bin/%< % && bin/%<" C-m<CR>') -- for interactive problems - open tmux pane below then press
--- to add testcase just use CompetiTest commands directly
+vim.keymap.set(
+  'n',
+  '<M-R>',
+  '<cmd>silent !tmux send-keys -t bottom "g++ -std=c++20 -Wshadow -Wextra -Wall -fsanitize=address -fsanitize=undefined -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -ggdb3 -o bin/%< % && bin/%<" C-m<CR>'
+) -- for interactive problems - open tmux pane below then press
 
 -- Set highlight on search, but clear on pressing <Esc> in normal mode
 vim.opt.hlsearch = true
@@ -631,7 +634,7 @@ require('lazy').setup({
         -- have a well standardized coding style. You can add additional
         -- languages here or re-enable it for the disabled ones.
         -- local disable_filetypes = { c = true, cpp = true }
-        local disable_filetypes = { c = true }
+        local disable_filetypes = { c = true, cpp = true }
         return {
           timeout_ms = 500,
           lsp_fallback = not disable_filetypes[vim.bo[bufnr].filetype],
@@ -938,7 +941,23 @@ require('lazy').setup({
         testcases_directory = 'testcases',
         running_directory = 'bin',
         compile_command = {
-          cpp = { exec = 'g++', args = { '--std', 'c++20', '-Wall', '$(FNAME)', '-o', './bin/$(FNOEXT)' } }, -- for c++20
+          cpp = {
+            exec = 'g++',
+            args = {
+              '-std=c++20',
+              '-Wshadow',
+              '-Wextra',
+              '-Wall',
+              '-D_GLIBCXX_ASSERTIONS',
+              '-D_GLIBCXX_DEBUG',
+              '-ggdb3',
+              '-fsanitize=address',
+              '-fsanitize=undefined',
+              '$(FNAME)',
+              '-o',
+              './bin/$(FNOEXT)',
+            },
+          }, -- c++20 slow compile to check mistakes
         },
       }
     end,
