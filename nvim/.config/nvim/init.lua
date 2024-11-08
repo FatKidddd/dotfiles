@@ -105,15 +105,11 @@ vim.api.nvim_exec2(
 )
 
 -- for CP
-vim.keymap.set('n', '<M-c>', '<cmd>silent !tmux send-keys -t bottom "g++ -o %< % && ./%<" C-m<CR>')
-
-vim.keymap.set('n', '<M-a>', '<cmd>CompetiTest add_testcase<CR>')
-vim.keymap.set('n', '<M-A>', '<cmd>CompetiTest receive testcases<CR>')
-vim.keymap.set('n', '<M-e>', '<cmd>CompetiTest edit_testcase<CR>')
-vim.keymap.set('n', '<M-d>', '<cmd>CompetiTest delete_testcase<CR>')
-vim.keymap.set('n', '<M-k>', '<cmd>!rm %<_input*.txt %<_output*.txt<CR>')
-vim.keymap.set('n', '<M-R>', '<cmd>CompetiTest run<CR>')
-vim.keymap.set('n', '<M-r>', '<cmd>CompetiTest run_no_compile<CR>')
+vim.keymap.set('n', '<M-k>', '<cmd>!rm testcases/%<_input*.txt testcases/%<_output*.txt<CR>')
+vim.keymap.set('n', '<M-a>', '<cmd>CompetiTest receive testcases<CR>')
+vim.keymap.set('n', '<M-r>', '<cmd>CompetiTest run<CR>')
+vim.keymap.set('n', '<M-R>', '<cmd>silent !tmux send-keys -t bottom "g++ --std=c++20 -o bin/%< % && bin/%<" C-m<CR>') -- for interactive problems - open tmux pane below then press
+-- to add testcase just use CompetiTest commands directly
 
 -- Set highlight on search, but clear on pressing <Esc> in normal mode
 vim.opt.hlsearch = true
@@ -939,8 +935,10 @@ require('lazy').setup({
     dependencies = 'MunifTanjim/nui.nvim',
     config = function()
       require('competitest').setup {
+        testcases_directory = 'testcases',
+        running_directory = 'bin',
         compile_command = {
-          cpp = { exec = 'g++', args = { '--std', 'c++20', '-Wall', '$(FNAME)', '-o', '$(FNOEXT)' } }, -- for c++20
+          cpp = { exec = 'g++', args = { '--std', 'c++20', '-Wall', '$(FNAME)', '-o', './bin/$(FNOEXT)' } }, -- for c++20
         },
       }
     end,
