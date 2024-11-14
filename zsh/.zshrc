@@ -138,12 +138,13 @@ source $ZSH/oh-my-zsh.sh
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
+#
 alias conf="nvim ~/dotfiles/zsh/.zshrc"
 alias upev="sudo apt update -y && sudo apt full-upgrade -y && sudo apt autoremove -y && sudo apt clean -y && sudo apt autoclean -y"
 
-alias ls="eza -alh --color=auto --group-directories-first --icons"
-alias lh="eza -alh --color=auto --group-directories-first --icons"
-alias l="eza -alh --color=auto --group-directories-first --icons"
+alias ls="eza -ah --color=auto --group-directories-first --icons"
+alias lh="eza -ah --color=auto --group-directories-first --icons"
+alias l="eza -ah --color=auto --group-directories-first --icons"
 alias :q="exit"
 
 alias cdde="cd /mnt/c/Users/justi/Desktop/";
@@ -165,4 +166,5 @@ eval "$(pyenv init -)"
 export PATH="$PATH:$HOME/.local/bin" # for protoc rust
 
 # for clangd lsp to know where header files are
-export CPLUS_INCLUDE_PATH=/usr/include/c++/11:/usr/include/x86_64-linux-gnu/c++/11
+export CPLUS_INCLUDE_PATH="/usr/include/c++/11:/usr/include/x86_64-linux-gnu/c++/11"
+export CPLUS_INCLUDE_PATH="$CPLUS_INCLUDE_PATH:$HOME/CP/ac-library"
