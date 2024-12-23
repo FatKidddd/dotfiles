@@ -74,6 +74,8 @@ vim.opt.expandtab = true
 
 vim.opt.linebreak = true
 
+vim.keymap.set('n', '<leader>cc', '<cmd>CopilotChat<CR>')
+
 -- My own keymaps
 vim.keymap.set('i', 'jk', '<Esc>')
 vim.keymap.set('i', '<M-BS>', '<C-w>')
@@ -553,15 +555,15 @@ require('lazy').setup({
       local servers = {
         clangd = {},
         -- gopls = {},
-        pyright = {},
-        rust_analyzer = {},
+        -- pyright = {},
+        -- rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
         -- Some languages (like typescript) have entire language plugins that can be useful:
         --    https://github.com/pmizio/typescript-tools.nvim
         --
         -- But for many setups, the LSP (`tsserver`) will work just fine
-        tsserver = {},
+        ts_ls = {},
         --
 
         lua_ls = {
@@ -578,6 +580,13 @@ require('lazy').setup({
             },
           },
         },
+        -- solidity = {
+        --   cmd = { 'nomicfoundation-solidity-language-server', '--stdio' },
+        --   filetypes = { 'solidity' },
+        --   root_dir = require('lspconfig.util').find_git_ancestor,
+        --   single_file_support = true,
+        --   autoformat = false,
+        -- },
       }
 
       -- Ensure the servers and tools above are installed
@@ -634,7 +643,7 @@ require('lazy').setup({
         -- have a well standardized coding style. You can add additional
         -- languages here or re-enable it for the disabled ones.
         -- local disable_filetypes = { c = true, cpp = true }
-        local disable_filetypes = { c = true, cpp = true }
+        local disable_filetypes = { c = true, cpp = true, solidity = true }
         return {
           timeout_ms = 500,
           lsp_fallback = not disable_filetypes[vim.bo[bufnr].filetype],
@@ -967,9 +976,31 @@ require('lazy').setup({
     lazy = false, -- we don't want to lazy load VimTeX
     -- tag = "v2.15", -- uncomment to pin to a specific release
     init = function()
-      -- VimTeX configuration goes here, e.g.
       vim.g.vimtex_view_method = 'zathura'
+      -- open zathura window with compiled file in wsl2 first, then run <leader>ll and <leader>lv
     end,
+  },
+  {
+    'CopilotC-Nvim/CopilotChat.nvim',
+    dependencies = {
+      { 'github/copilot.vim' }, -- or zbirenbaum/copilot.lua
+      { 'nvim-lua/plenary.nvim', branch = 'master' }, -- for curl, log and async functions
+    },
+    build = 'make tiktoken', -- Only on MacOS or Linux
+    opts = {
+      -- See Configuration section for options
+    },
+  },
+  {
+    'kwkarlwang/bufresize.nvim',
+    config = function()
+      require('bufresize').setup()
+    end,
+  },
+  {
+    '3rd/image.nvim',
+    build = false, -- so that it doesn't build the rock https://github.com/3rd/image.nvim/issues/91#issuecomment-2453430239
+    opts = {},
   },
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
