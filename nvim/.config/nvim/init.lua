@@ -74,8 +74,6 @@ vim.opt.expandtab = true
 
 vim.opt.linebreak = true
 
-vim.keymap.set('n', '<leader>cc', '<cmd>CopilotChat<CR>')
-
 -- My own keymaps
 vim.keymap.set('i', 'jk', '<Esc>')
 vim.keymap.set('i', '<M-BS>', '<C-w>')
@@ -565,6 +563,7 @@ require('lazy').setup({
         -- But for many setups, the LSP (`tsserver`) will work just fine
         ts_ls = {},
         --
+        ltex = {},
 
         lua_ls = {
           -- cmd = {...},
@@ -777,13 +776,21 @@ require('lazy').setup({
     -- change the command in the config to whatever the name of that colorscheme is.
     --
     -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-    'folke/tokyonight.nvim',
+    -- 'folke/tokyonight.nvim',
+    'rebelot/kanagawa.nvim',
+    -- 'EdenEast/nightfox.nvim',
+    -- 'catppuccin/nvim',
+    -- 'rose-pine/neovim',
     priority = 1000, -- Make sure to load this before all the other start plugins.
     init = function()
       -- Load the colorscheme here.
       -- Like many other themes, this one has different styles, and you could load
       -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-night'
+      -- vim.cmd.colorscheme 'tokyonight-night'
+      vim.cmd.colorscheme 'kanagawa'
+      -- vim.cmd.colorscheme 'nightfox'
+      -- vim.cmd.colorscheme 'catppuccin-mocha'
+      -- vim.cmd.colorscheme 'rose-pine-main'
 
       -- You can configure highlights by doing something like:
       vim.cmd.hi 'Comment gui=none'
@@ -986,9 +993,158 @@ require('lazy').setup({
       { 'github/copilot.vim' }, -- or zbirenbaum/copilot.lua
       { 'nvim-lua/plenary.nvim', branch = 'master' }, -- for curl, log and async functions
     },
+    lazy = false,
     build = 'make tiktoken', -- Only on MacOS or Linux
     opts = {
-      -- See Configuration section for options
+      question_header = '## User ',
+      answer_header = '## Copilot ',
+      error_header = '## Error ',
+      prompts = {
+        -- Code related prompts
+        Explain = 'Please explain how the following code works.',
+        Review = 'Please review the following code and provide suggestions for improvement.',
+        Tests = 'Please explain how the selected code works, then generate unit tests for it.',
+        Refactor = 'Please refactor the following code to improve its clarity and readability.',
+        FixCode = 'Please fix the following code to make it work as intended.',
+        FixError = 'Please explain the error in the following text and provide a solution.',
+        BetterNamings = 'Please provide better names for the following variables and functions.',
+        Documentation = 'Please provide documentation for the following code.',
+        SwaggerApiDocs = 'Please provide documentation for the following API using Swagger.',
+        SwaggerJsDocs = 'Please write JSDoc for the following API using Swagger.',
+        -- Text related prompts
+        Summarize = 'Please summarize the following text.',
+        Spelling = 'Please correct any grammar and spelling errors in the following text.',
+        Wording = 'Please improve the grammar and wording of the following text.',
+        Concise = 'Please rewrite the following text to make it more concise.',
+      },
+      -- auto_follow_cursor = false, -- Don't follow the cursor after getting response
+      mappings = {
+        -- default is <C-l> which is annoying when switching panes for tmux
+        reset = {
+          normal = '<leader>ak',
+          insert = '<leader>ak',
+        },
+      },
+    },
+    config = function(_, opts)
+      local chat = require 'CopilotChat'
+      chat.setup(opts)
+
+      local select = require 'CopilotChat.select'
+      vim.api.nvim_create_user_command('CopilotChatVisual', function(args)
+        chat.ask(args.args, { selection = select.visual })
+      end, { nargs = '*', range = true })
+
+      -- Inline chat with Copilot
+      vim.api.nvim_create_user_command('CopilotChatInline', function(args)
+        chat.ask(args.args, {
+          selection = select.visual,
+          window = {
+            layout = 'float',
+            relative = 'cursor',
+            width = 1,
+            height = 0.4,
+            row = 1,
+          },
+        })
+      end, { nargs = '*', range = true })
+
+      -- Restore CopilotChatBuffer
+      vim.api.nvim_create_user_command('CopilotChatBuffer', function(args)
+        chat.ask(args.args, { selection = select.buffer })
+      end, { nargs = '*', range = true })
+
+      -- Custom buffer for CopilotChat
+      vim.api.nvim_create_autocmd('BufEnter', {
+        pattern = 'copilot-*',
+        callback = function()
+          vim.opt_local.relativenumber = true
+          vim.opt_local.number = true
+
+          -- Get current filetype and set it to markdown if the current filetype is copilot-chat
+          local ft = vim.bo.filetype
+          if ft == 'copilot-chat' then
+            vim.bo.filetype = 'markdown'
+          end
+        end,
+      })
+    end,
+    -- event = 'VeryLazy',
+    keys = {
+      -- Show prompts actions with telescope
+      {
+        '<leader>ap',
+        function()
+          local actions = require 'CopilotChat.actions'
+          require('CopilotChat.integrations.telescope').pick(actions.prompt_actions())
+        end,
+        desc = 'CopilotChat - Prompt actions',
+      },
+      {
+        '<leader>ap',
+        ":lua require('CopilotChat.integrations.telescope').pick(require('CopilotChat.actions').prompt_actions({selection = require('CopilotChat.select').visual}))<CR>",
+        mode = 'x',
+        desc = 'CopilotChat - Prompt actions',
+      },
+      -- Code related commands
+      { '<leader>ae', '<cmd>CopilotChatExplain<cr>', desc = 'CopilotChat - Explain code' },
+      { '<leader>at', '<cmd>CopilotChatTests<cr>', desc = 'CopilotChat - Generate tests' },
+      { '<leader>ar', '<cmd>CopilotChatReview<cr>', desc = 'CopilotChat - Review code' },
+      { '<leader>aR', '<cmd>CopilotChatRefactor<cr>', desc = 'CopilotChat - Refactor code' },
+      { '<leader>an', '<cmd>CopilotChatBetterNamings<cr>', desc = 'CopilotChat - Better Naming' },
+      -- Chat with Copilot in visual mode
+      {
+        '<leader>av',
+        ':CopilotChatVisual',
+        mode = 'x',
+        desc = 'CopilotChat - Open in vertical split',
+      },
+      {
+        '<leader>ax',
+        ':CopilotChatInline<cr>',
+        mode = 'x',
+        desc = 'CopilotChat - Inline chat',
+      },
+      -- Custom input for CopilotChat
+      {
+        '<leader>ai',
+        function()
+          local input = vim.fn.input 'Ask Copilot: '
+          if input ~= '' then
+            vim.cmd('CopilotChat ' .. input)
+          end
+        end,
+        desc = 'CopilotChat - Ask input',
+      },
+      -- Generate commit message based on the git diff
+      {
+        '<leader>am',
+        '<cmd>CopilotChatCommit<cr>',
+        desc = 'CopilotChat - Generate commit message for all changes',
+      },
+      -- Quick chat with Copilot
+      {
+        '<leader>aq',
+        function()
+          local input = vim.fn.input 'Quick Chat: '
+          if input ~= '' then
+            vim.cmd('CopilotChatBuffer ' .. input)
+          end
+        end,
+        desc = 'CopilotChat - Quick chat',
+      },
+      -- Debug
+      { '<leader>ad', '<cmd>CopilotChatDebugInfo<cr>', desc = 'CopilotChat - Debug Info' },
+      -- Fix the issue with diagnostic
+      { '<leader>af', '<cmd>CopilotChatFixDiagnostic<cr>', desc = 'CopilotChat - Fix Diagnostic' },
+      -- Clear buffer and chat history
+      -- { '<leader>al', '<cmd>CopilotChatReset<cr>', desc = 'CopilotChat - Clear buffer and chat history' },
+      -- Toggle Copilot Chat Vsplit
+      { '<leader>av', '<cmd>CopilotChatToggle<cr>', desc = 'CopilotChat - Toggle' },
+      -- -- Copilot Chat Models
+      -- { '<leader>a?', '<cmd>CopilotChatModels<cr>', desc = 'CopilotChat - Select Models' },
+      -- -- Copilot Chat Agents
+      -- { '<leader>aa', '<cmd>CopilotChatAgents<cr>', desc = 'CopilotChat - Select Agents' },
     },
   },
   {
@@ -996,11 +1152,6 @@ require('lazy').setup({
     config = function()
       require('bufresize').setup()
     end,
-  },
-  {
-    '3rd/image.nvim',
-    build = false, -- so that it doesn't build the rock https://github.com/3rd/image.nvim/issues/91#issuecomment-2453430239
-    opts = {},
   },
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
@@ -1045,6 +1196,3 @@ require('lazy').setup({
     },
   },
 })
-
--- The line beneath this is called `modeline`. See `:help modeline`
--- vim: ts=2 sts=2 sw=2 et

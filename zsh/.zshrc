@@ -166,5 +166,8 @@ eval "$(pyenv init -)"
 export PATH="$PATH:$HOME/.local/bin" # for protoc rust
 
 # for clangd lsp to know where header files are
-export CPLUS_INCLUDE_PATH="/usr/include/c++/11:/usr/include/x86_64-linux-gnu/c++/11"
+export CPLUS_INCLUDE_PATH="/usr/include/c++/13:/usr/include/x86_64-linux-gnu/c++/13"
 export CPLUS_INCLUDE_PATH="$CPLUS_INCLUDE_PATH:$HOME/CP/ac-library"
+
+export PATH="$PATH:$HOME/.foundry/bin"
+
