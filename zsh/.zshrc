@@ -96,6 +96,7 @@ plugins=(
     node
     npm
     nvm
+    poetry
     yarn
     volta
     vscode
@@ -171,3 +172,10 @@ export CPLUS_INCLUDE_PATH="$CPLUS_INCLUDE_PATH:$HOME/CP/ac-library"
 
 export PATH="$PATH:$HOME/.foundry/bin"
 
+alias pot="source \$(poetry env info --path)/bin/activate"
+
+#THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
+export SDKMAN_DIR="$HOME/.sdkman"
+[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
+
+export JAVA_HOME="/usr/lib/jvm/java-21-openjdk-amd64/bin/java"
