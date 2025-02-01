@@ -563,7 +563,6 @@ require('lazy').setup({
         --
         -- But for many setups, the LSP (`tsserver`) will work just fine
         ts_ls = {},
-        ltex = {},
 
         lua_ls = {
           -- cmd = {...},
@@ -1279,6 +1278,39 @@ require('lazy').setup({
   --     end,
   --   },
   -- },
+  {
+    'rcasia/neotest-java',
+    ft = 'java',
+    dependencies = {
+      'mfussenegger/nvim-jdtls',
+      'mfussenegger/nvim-dap', -- for the debugger
+      'rcarriga/nvim-dap-ui', -- recommended
+      'theHamsta/nvim-dap-virtual-text', -- recommended
+    },
+  },
+  {
+    'nvim-neotest/neotest',
+    dependencies = {
+      'nvim-neotest/nvim-nio',
+      'nvim-lua/plenary.nvim',
+      'antoinemadec/FixCursorHold.nvim',
+      'nvim-treesitter/nvim-treesitter',
+    },
+    opts = {
+      adapters = {
+        ['neotest-java'] = {
+          -- config here
+          --
+          junit_jar = nil, -- default: stdpath("data") .. /nvim/neotest-java/junit-platform-console-standalone-[version].jar
+          incremental_build = true,
+        },
+      },
+    },
+  },
+  {
+    'mfussenegger/nvim-lint',
+  },
+
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
   -- place them in the correct locations.

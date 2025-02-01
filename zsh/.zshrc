@@ -140,7 +140,17 @@ source $ZSH/oh-my-zsh.sh
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 #
+if command -v nvim > /dev/null 2>&1; then
+  alias vim='nvim'
+else
+  alias vim='vim'
+fi
+
 alias conf="nvim ~/dotfiles/zsh/.zshrc"
+alias nvimrc="nvim ~/dotfiles/nvim/.config/nvim/init.lua"
+
+alias poet="source \$(poetry env info --path)/bin/activate"
+
 alias upev="sudo apt update -y && sudo apt full-upgrade -y && sudo apt autoremove -y && sudo apt clean -y && sudo apt autoclean -y"
 
 alias ls="eza -ah --color=auto --group-directories-first --icons"
@@ -171,8 +181,6 @@ export CPLUS_INCLUDE_PATH="/usr/include/c++/13:/usr/include/x86_64-linux-gnu/c++
 export CPLUS_INCLUDE_PATH="$CPLUS_INCLUDE_PATH:$HOME/CP/ac-library"
 
 export PATH="$PATH:$HOME/.foundry/bin"
-
-alias pot="source \$(poetry env info --path)/bin/activate"
 
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
 export SDKMAN_DIR="$HOME/.sdkman"
