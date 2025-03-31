@@ -74,6 +74,9 @@ vim.opt.expandtab = true
 
 vim.opt.linebreak = true
 
+-- WARNING: Pushing api key here
+vim.env.DEEPSEEK_API_KEY = 'sk-185d5d07f35f4ea9817fb105a0da9052'
+
 -- My own keymaps
 vim.keymap.set('i', 'jk', '<Esc>')
 vim.keymap.set('i', '<M-BS>', '<C-w>')
@@ -184,6 +187,17 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
   callback = function()
     vim.highlight.on_yank()
+  end,
+})
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = { 'markdown', 'txt', 'env', 'norg' },
+  callback = function(opts)
+    local cmp = require 'cmp'
+    cmp.setup.buffer { enabled = false }
+    -- have to "re-enable" spellchecking for these files
+    vim.opt.spelllang = 'en_us'
+    vim.opt.spell = true
   end,
 })
 
@@ -714,12 +728,24 @@ require('lazy').setup({
       --  into multiple repos for maintenance purposes.
       'hrsh7th/cmp-nvim-lsp',
       'hrsh7th/cmp-path',
+      -- WTF!!!
+      -- 'zbirenbaum/copilot-cmp',
     },
     config = function()
       -- See `:help cmp`
       local cmp = require 'cmp'
       local luasnip = require 'luasnip'
       luasnip.config.setup {}
+
+      -- WTF!!!
+      -- For copilot tab completion
+      -- local has_words_before = function()
+      --   if vim.api.nvim_buf_get_option(0, 'buftype') == 'prompt' then
+      --     return false
+      --   end
+      --   local line, col = unpack(vim.api.nvim_win_get_cursor(0))
+      --   return col ~= 0 and vim.api.nvim_buf_get_text(0, line - 1, 0, line - 1, col, {})[1]:match '^%s*$' == nil
+      -- end
 
       cmp.setup {
         snippet = {
@@ -778,10 +804,20 @@ require('lazy').setup({
             end
           end, { 'i', 's' }),
 
+          -- For copilot tab completion
+          -- ['<Tab>'] = vim.schedule_wrap(function(fallback)
+          --   if cmp.visible() and has_words_before() then
+          --     cmp.select_next_item { behavior = cmp.SelectBehavior.Select }
+          --   else
+          --     fallback()
+          --   end
+          -- end),
+
           -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
           --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
         },
         sources = {
+          -- { name = 'copilot' },
           { name = 'nvim_lsp' },
           { name = 'luasnip' },
           { name = 'path' },
@@ -796,8 +832,8 @@ require('lazy').setup({
     --
     -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
     -- 'folke/tokyonight.nvim',
-    'rebelot/kanagawa.nvim',
-    -- 'EdenEast/nightfox.nvim',
+    -- 'rebelot/kanagawa.nvim',
+    'EdenEast/nightfox.nvim',
     -- 'catppuccin/nvim',
     -- 'rose-pine/neovim',
     priority = 1000, -- Make sure to load this before all the other start plugins.
@@ -806,8 +842,8 @@ require('lazy').setup({
       -- Like many other themes, this one has different styles, and you could load
       -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
       -- vim.cmd.colorscheme 'tokyonight-night'
-      vim.cmd.colorscheme 'kanagawa'
-      -- vim.cmd.colorscheme 'nightfox'
+      -- vim.cmd.colorscheme 'kanagawa'
+      vim.cmd.colorscheme 'carbonfox'
       -- vim.cmd.colorscheme 'catppuccin-mocha'
       -- vim.cmd.colorscheme 'rose-pine-main'
 
@@ -1007,277 +1043,11 @@ require('lazy').setup({
     end,
   },
   {
-    'CopilotC-Nvim/CopilotChat.nvim',
-    dependencies = {
-      { 'github/copilot.vim' }, -- or zbirenbaum/copilot.lua
-      { 'nvim-lua/plenary.nvim', branch = 'master' }, -- for curl, log and async functions
-    },
-    lazy = false,
-    build = 'make tiktoken', -- Only on MacOS or Linux
-    opts = {
-      question_header = '## User ',
-      answer_header = '## Copilot ',
-      error_header = '## Error ',
-      prompts = {
-        -- Code related prompts
-        Explain = 'Please explain how the following code works.',
-        Review = 'Please review the following code and provide suggestions for improvement.',
-        Tests = 'Please explain how the selected code works, then generate unit tests for it.',
-        Refactor = 'Please refactor the following code to improve its clarity and readability.',
-        FixCode = 'Please fix the following code to make it work as intended.',
-        FixError = 'Please explain the error in the following text and provide a solution.',
-        BetterNamings = 'Please provide better names for the following variables and functions.',
-        Documentation = 'Please provide documentation for the following code.',
-        SwaggerApiDocs = 'Please provide documentation for the following API using Swagger.',
-        SwaggerJsDocs = 'Please write JSDoc for the following API using Swagger.',
-        -- Text related prompts
-        Summarize = 'Please summarize the following text.',
-        Spelling = 'Please correct any grammar and spelling errors in the following text.',
-        Wording = 'Please improve the grammar and wording of the following text.',
-        Concise = 'Please rewrite the following text to make it more concise.',
-      },
-      -- auto_follow_cursor = false, -- Don't follow the cursor after getting response
-      mappings = {
-        -- default is <C-l> which is annoying when switching panes for tmux
-        reset = {
-          normal = '<leader>ak',
-          insert = '<leader>ak',
-        },
-      },
-    },
-    config = function(_, opts)
-      local chat = require 'CopilotChat'
-      chat.setup(opts)
-
-      local select = require 'CopilotChat.select'
-      vim.api.nvim_create_user_command('CopilotChatVisual', function(args)
-        chat.ask(args.args, { selection = select.visual })
-      end, { nargs = '*', range = true })
-
-      -- Inline chat with Copilot
-      vim.api.nvim_create_user_command('CopilotChatInline', function(args)
-        chat.ask(args.args, {
-          selection = select.visual,
-          window = {
-            layout = 'float',
-            relative = 'cursor',
-            width = 1,
-            height = 0.4,
-            row = 1,
-          },
-        })
-      end, { nargs = '*', range = true })
-
-      -- Restore CopilotChatBuffer
-      vim.api.nvim_create_user_command('CopilotChatBuffer', function(args)
-        chat.ask(args.args, { selection = select.buffer })
-      end, { nargs = '*', range = true })
-
-      -- Custom buffer for CopilotChat
-      vim.api.nvim_create_autocmd('BufEnter', {
-        pattern = 'copilot-*',
-        callback = function()
-          vim.opt_local.relativenumber = true
-          vim.opt_local.number = true
-
-          -- Get current filetype and set it to markdown if the current filetype is copilot-chat
-          local ft = vim.bo.filetype
-          if ft == 'copilot-chat' then
-            vim.bo.filetype = 'markdown'
-          end
-        end,
-      })
-    end,
-    -- event = 'VeryLazy',
-    keys = {
-      -- Show prompts actions with telescope
-      {
-        '<leader>ap',
-        function()
-          local actions = require 'CopilotChat.actions'
-          require('CopilotChat.integrations.telescope').pick(actions.prompt_actions())
-        end,
-        desc = 'CopilotChat - Prompt actions',
-      },
-      {
-        '<leader>ap',
-        ":lua require('CopilotChat.integrations.telescope').pick(require('CopilotChat.actions').prompt_actions({selection = require('CopilotChat.select').visual}))<CR>",
-        mode = 'x',
-        desc = 'CopilotChat - Prompt actions',
-      },
-      -- Code related commands
-      { '<leader>ae', '<cmd>CopilotChatExplain<cr>', desc = 'CopilotChat - Explain code' },
-      { '<leader>at', '<cmd>CopilotChatTests<cr>', desc = 'CopilotChat - Generate tests' },
-      { '<leader>ar', '<cmd>CopilotChatReview<cr>', desc = 'CopilotChat - Review code' },
-      { '<leader>aR', '<cmd>CopilotChatRefactor<cr>', desc = 'CopilotChat - Refactor code' },
-      { '<leader>an', '<cmd>CopilotChatBetterNamings<cr>', desc = 'CopilotChat - Better Naming' },
-      -- Chat with Copilot in visual mode
-      {
-        '<leader>av',
-        ':CopilotChatVisual',
-        mode = 'x',
-        desc = 'CopilotChat - Open in vertical split',
-      },
-      {
-        '<leader>ax',
-        ':CopilotChatInline<cr>',
-        mode = 'x',
-        desc = 'CopilotChat - Inline chat',
-      },
-      -- Custom input for CopilotChat
-      {
-        '<leader>ai',
-        function()
-          local input = vim.fn.input 'Ask Copilot: '
-          if input ~= '' then
-            vim.cmd('CopilotChat ' .. input)
-          end
-        end,
-        desc = 'CopilotChat - Ask input',
-      },
-      -- Generate commit message based on the git diff
-      {
-        '<leader>am',
-        '<cmd>CopilotChatCommit<cr>',
-        desc = 'CopilotChat - Generate commit message for all changes',
-      },
-      -- Quick chat with Copilot
-      {
-        '<leader>aq',
-        function()
-          local input = vim.fn.input 'Quick Chat: '
-          if input ~= '' then
-            vim.cmd('CopilotChatBuffer ' .. input)
-          end
-        end,
-        desc = 'CopilotChat - Quick chat',
-      },
-      -- Debug
-      { '<leader>ad', '<cmd>CopilotChatDebugInfo<cr>', desc = 'CopilotChat - Debug Info' },
-      -- Fix the issue with diagnostic
-      { '<leader>af', '<cmd>CopilotChatFixDiagnostic<cr>', desc = 'CopilotChat - Fix Diagnostic' },
-      -- Clear buffer and chat history
-      -- { '<leader>al', '<cmd>CopilotChatReset<cr>', desc = 'CopilotChat - Clear buffer and chat history' },
-      -- Toggle Copilot Chat Vsplit
-      { '<leader>av', '<cmd>CopilotChatToggle<cr>', desc = 'CopilotChat - Toggle' },
-      -- -- Copilot Chat Models
-      -- { '<leader>a?', '<cmd>CopilotChatModels<cr>', desc = 'CopilotChat - Select Models' },
-      -- -- Copilot Chat Agents
-      -- { '<leader>aa', '<cmd>CopilotChatAgents<cr>', desc = 'CopilotChat - Select Agents' },
-    },
-  },
-  {
     'kwkarlwang/bufresize.nvim',
     config = function()
       require('bufresize').setup()
     end,
   },
-  -- {
-  --   'kevinhwang91/nvim-ufo',
-  --   dependencies = 'kevinhwang91/promise-async',
-  --   event = 'UIEnter', -- needed for folds to load in time and comments being closed
-  --   keys = {
-  --     { '<leader>if', vim.cmd.UfoInspect, desc = ' Fold info' },
-  --     {
-  --       'zm',
-  --       function()
-  --         require('ufo').closeAllFolds()
-  --       end,
-  --       desc = '󱃄 Close all folds',
-  --     },
-  --     {
-  --       'zr',
-  --       function()
-  --         require('ufo').openFoldsExceptKinds { 'comment', 'imports' }
-  --       end,
-  --       desc = '󱃄 Open regular folds',
-  --     },
-  --     -- {
-  --     --   'z1',
-  --     --   function()
-  --     --     require('ufo').closeFoldsWith(1)
-  --     --   end,
-  --     --   desc = '󱃄 Close L1 folds',
-  --     -- },
-  --     -- {
-  --     --   'z2',
-  --     --   function()
-  --     --     require('ufo').closeFoldsWith(2)
-  --     --   end,
-  --     --   desc = '󱃄 Close L2 folds',
-  --     -- },
-  --     -- {
-  --     --   'z3',
-  --     --   function()
-  --     --     require('ufo').closeFoldsWith(3)
-  --     --   end,
-  --     --   desc = '󱃄 Close L3 folds',
-  --     -- },
-  --     -- {
-  --     --   'z4',
-  --     --   function()
-  --     --     require('ufo').closeFoldsWith(4)
-  --     --   end,
-  --     --   desc = '󱃄 Close L4 folds',
-  --     -- },
-  --   },
-  --   init = function()
-  --     -- INFO fold commands usually change the foldlevel, which fixes folds, e.g.
-  --     -- auto-closing them after leaving insert mode, however ufo does not seem to
-  --     -- have equivalents for `zr` and `zm` because there is no saved fold level.
-  --     -- Consequently, the vim-internal fold levels need to be disabled by setting
-  --     -- them to 99.
-  --     vim.opt.foldlevel = 99
-  --     vim.opt.foldlevelstart = 99
-  --   end,
-  --   opts = {
-  --     -- when opening the buffer, close these fold kinds
-  --     close_fold_kinds_for_ft = {
-  --       default = { 'imports', 'comment' },
-  --       json = { 'array' },
-  --       markdown = {}, -- avoid everything becoming folded
-  --       -- use `:UfoInspect` to get see available fold kinds
-  --     },
-  --     open_fold_hl_timeout = 800,
-  --     provider_selector = function(_bufnr, ft, _buftype)
-  --       -- ufo accepts only two kinds as priority, see https://github.com/kevinhwang91/nvim-ufo/issues/256
-  --       local lspWithOutFolding = { 'markdown', 'zsh', 'bash', 'css', 'python', 'json' }
-  --       if vim.tbl_contains(lspWithOutFolding, ft) then
-  --         return { 'treesitter', 'indent' }
-  --       end
-  --       return { 'lsp', 'indent' }
-  --     end,
-  --     -- show folds with number of folded lines instead of just the icon
-  --     fold_virt_text_handler = function(virtText, lnum, endLnum, width, truncate)
-  --       local hlgroup = 'NonText'
-  --       local icon = ''
-  --       local newVirtText = {}
-  --       local suffix = ('  %s %d'):format(icon, endLnum - lnum)
-  --       local sufWidth = vim.fn.strdisplaywidth(suffix)
-  --       local targetWidth = width - sufWidth
-  --       local curWidth = 0
-  --       for _, chunk in ipairs(virtText) do
-  --         local chunkText = chunk[1]
-  --         local chunkWidth = vim.fn.strdisplaywidth(chunkText)
-  --         if targetWidth > curWidth + chunkWidth then
-  --           table.insert(newVirtText, chunk)
-  --         else
-  --           chunkText = truncate(chunkText, targetWidth - curWidth)
-  --           local hlGroup = chunk[2]
-  --           table.insert(newVirtText, { chunkText, hlGroup })
-  --           chunkWidth = vim.fn.strdisplaywidth(chunkText)
-  --           if curWidth + chunkWidth < targetWidth then
-  --             suffix = suffix .. (' '):rep(targetWidth - curWidth - chunkWidth)
-  --           end
-  --           break
-  --         end
-  --         curWidth = curWidth + chunkWidth
-  --       end
-  --       table.insert(newVirtText, { suffix, hlgroup })
-  --       return newVirtText
-  --     end,
-  --   },
-  -- },
   {
     'rcasia/neotest-java',
     ft = 'java',
@@ -1308,9 +1078,96 @@ require('lazy').setup({
     },
   },
   {
-    'mfussenegger/nvim-lint',
+    'nvim-neorg/neorg',
+    lazy = false, -- Disable lazy loading as some `lazy.nvim` distributions set `lazy = true` by default
+    version = '*', -- Pin Neorg to the latest stable release
+    config = true,
   },
-
+  {
+    'yetone/avante.nvim',
+    event = 'VeryLazy',
+    lazy = false,
+    version = false, -- Set this to "*" to always pull the latest release version, or set it to false to update to the latest code changes.
+    opts = {
+      -- add any opts here
+      -- for example
+      -- provider = 'openai',
+      -- openai = {
+      --   endpoint = 'https://api.openai.com/v1',
+      --   model = 'gpt-4o', -- your desired model (or use gpt-4o, etc.)
+      --   timeout = 30000, -- timeout in milliseconds
+      --   temperature = 0, -- adjust if needed
+      --   max_tokens = 4096,
+      --   -- reasoning_effort = "high" -- only supported for reasoning models (o1, etc.)
+      -- },
+      provider = 'deepseek',
+      vendors = {
+        deepseek = {
+          __inherited_from = 'openai',
+          api_key_name = 'DEEPSEEK_API_KEY',
+          endpoint = 'https://api.deepseek.com',
+          model = 'deepseek-coder',
+        },
+      },
+      -- provider = 'copilot'
+      behaviour = {
+        -- auto_suggestions = true,
+        -- enable_cursor_planning_mode = true,
+      },
+      mappings = {
+        suggestion = {
+          accept = '<Tab>',
+          next = '<M-]>',
+          prev = '<M-[>',
+          dismiss = '<C-]>',
+        },
+      },
+    },
+    -- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
+    build = 'make',
+    -- build = "powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false" -- for windows
+    dependencies = {
+      'nvim-treesitter/nvim-treesitter',
+      'stevearc/dressing.nvim',
+      'nvim-lua/plenary.nvim',
+      'MunifTanjim/nui.nvim',
+      --- The below dependencies are optional,
+      'echasnovski/mini.pick', -- for file_selector provider mini.pick
+      'nvim-telescope/telescope.nvim', -- for file_selector provider telescope
+      'hrsh7th/nvim-cmp', -- autocompletion for avante commands and mentions
+      'ibhagwan/fzf-lua', -- for file_selector provider fzf
+      'nvim-tree/nvim-web-devicons', -- or echasnovski/mini.icons
+      'zbirenbaum/copilot.lua', -- for providers='copilot'
+      {
+        -- support for image pasting
+        'HakonHarnes/img-clip.nvim',
+        event = 'VeryLazy',
+        opts = {
+          -- recommended settings
+          default = {
+            embed_image_as_base64 = false,
+            prompt_for_file_name = false,
+            drag_and_drop = {
+              insert_mode = true,
+            },
+            -- required for Windows users
+            use_absolute_path = true,
+          },
+        },
+      },
+      {
+        -- Make sure to set this up properly if you have lazy=true
+        'MeanderingProgrammer/render-markdown.nvim',
+        opts = {
+          file_types = { 'markdown', 'Avante' },
+        },
+        ft = { 'markdown', 'Avante' },
+      },
+    },
+  },
+  {
+    'github/copilot.vim',
+  },
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
   -- place them in the correct locations.
