@@ -952,7 +952,7 @@ require('lazy').setup({
       -- REQUIRED
       harpoon:setup()
 
-      vim.keymap.set('n', '<leader>a', function()
+      vim.keymap.set('n', '<leader>h', function()
         harpoon:list():add()
       end)
       vim.keymap.set('n', '<leader>e', function()
@@ -1113,6 +1113,7 @@ require('lazy').setup({
       behaviour = {
         -- auto_suggestions = true,
         -- enable_cursor_planning_mode = true,
+        enable_token_counting = false,
       },
       mappings = {
         suggestion = {
