@@ -226,19 +226,20 @@ function vup() {
 alias pbcopy='xsel --clipboard --input'
 alias pbpaste='xsel --clipboard --output'
 
+#!/bin/bash
 # -----------------------------------------------------------------------------
 # llm - A multi-purpose LLM context and prompt generation tool.
 #
 # By default, concatenates project files for LLM context.
-# With the --prompt flag, it wraps that context in a structured
-# prompt for code generation tasks.
+# With the --prompt flag, it wraps that context in a structured, cost-effective
+# "semantic patch" prompt for code generation tasks.
 #
 # Now extends .gitignore with .llmignore for a comprehensive ignore list.
 #
 # -- CONTEXT MODE --
 # Usage: llm [-v] [-c] [-s] [path]
 #
-# -- PROMPT MODE --
+# -- PROMPT MODE (SEMANTIC PATCH) --
 # Usage: llm -p "Your request..." [path]
 # -----------------------------------------------------------------------------
 function llm() {
@@ -300,7 +301,7 @@ function llm() {
       -v|--verbose) verbose=1; shift ;;
       -c|--clipboard-only) output_to_clipboard=1; save_to_file=0; shift ;;
       -s|--save-only) output_to_clipboard=0; save_to_file=1; shift ;;
-      --raw) raw_output=1; verbose=1; output_to_clipboard=0; save_to_file=0; shift ;;
+      --raw) raw_output=1; verbose=0; output_to_clipboard=0; save_to_file=0; shift ;;
       -*) echo "Error: Unknown option '$1'" >&2; return 1 ;;
       *)
         if [[ -n "$target_path" && "$target_path" != "." ]]; then
@@ -313,14 +314,17 @@ function llm() {
   # --- Mode Detection ---
   if [[ -n "$user_prompt" ]]; then
     # =========================================================================
-    # --- PROMPT GENERATION MODE (REVISED) ---
+    # --- PROMPT GENERATION MODE (SEMANTIC PATCH v2) ---
     # =========================================================================
-    local clip_cmd_arr=(); if command -v pbcopy >/dev/null 2>&1; then clip_cmd_arr=("pbcopy"); elif command -v wl-copy >/dev/null 2>&1; then clip_cmd_arr=("wl-copy"); elif command -v xsel >/dev/null 2>&1; then clip_cmd_arr=("xsel" "--clipboard" "--input"); else echo "Error: No clipboard utility found." >&2; return 1; fi
+    local clip_cmd_arr=()
+    if command -v wl-copy >/dev/null 2>&1; then clip_cmd_arr=("wl-copy");
+    elif command -v xsel >/dev/null 2>&1; then clip_cmd_arr=("xsel" "--clipboard" "--input");
+    else echo "Error: No clipboard utility (pbcopy, wl-copy, xsel) found." >&2; return 1; fi
+
     if [[ "$verbose" -eq 1 ]]; then echo "Generating project context for prompt..." >&2; fi
 
-       {
-      echo "You are an expert programmer and senior software architect."
-      echo "Your task is to fulfill the user's request by providing the complete, updated content for any modified files."
+    {
+      echo "You are an expert programmer. Your task is to fulfill the user's request by providing code changes in a special 'semantic patch' format."
       echo ""
       echo "# User Request"
       echo "$user_prompt"
@@ -332,33 +336,49 @@ function llm() {
       llm --raw "$target_path"
       echo ""
       echo "---"
-      echo "# Instructions for Your Response and ALL SUBSEQUENT RESPONSES"
+      echo "# Instructions for Your Response"
       echo ""
-      echo "1.  Start with a brief, one-paragraph summary of the changes you made."
-      echo "2.  After the summary, provide the **complete, updated content** for every file you modified or created."
-      echo "3.  **DO NOT** use diffs or patches. I need the full file content to ensure accuracy."
-      echo "4.  You **MUST** format each file's content within a Markdown code block."
-      echo "5.  The info string for each Markdown code block **MUST** follow this exact format: \`language:path/to/the/file.ext\`"
+      echo "1.  Start with a brief summary of your changes."
+      echo "2.  For each file you modify, you **MUST** provide one or more change blocks in the exact format below."
+      echo "3.  **DO NOT** provide the full file. Only provide the new code to be inserted."
       echo ""
-      echo "### Example Response Format:"
+      echo "### Semantic Patch Format:"
       echo "\`\`\`"
-      echo "I have refactored the database connection to use a connection pool."
-      echo ""
-      echo "\`\`\`\`javascript:src/api/db.js"
-      echo "// The full, modified content of db.js"
-      echo "const { Pool } = require('pg');"
-      echo "const pool = new Pool({ connectionString: 'postgres://user:pass@host:port/db' });"
-      echo "module.exports = pool;"
-      echo "\`\`\`\`"
+      echo "[BEGIN CHANGE]"
+      echo "file: path/to/the/file.ext"
+      echo "start_after:"
+      echo "---"
+      echo "A multi-line block of 3-5 lines that comes"
+      echo "IMMEDIATELY BEFORE the code you are replacing or inserting."
+      echo "This is a context block, not a single line."
+      echo "---"
+      echo "end_before:"
+      echo "---"
+      echo "A multi-line block of 3-5 lines that comes"
+      echo "IMMEDIATELY AFTER the code you are replacing or inserting."
+      echo "This is also a context block."
+      echo "---"
+      echo "content:"
+      echo "---"
+      echo "The new code block to be inserted goes here."
+      echo "This replaces everything between start_after and end_before."
+      echo "---"
+      echo "[END CHANGE]"
       echo "\`\`\`"
       echo ""
-      echo "Now, please fulfill my request using the context provided."
-
-    } | "${clip_cmd_arr[@]}" 
-
-    echo ":white_check_mark: Prompt successfully generated and copied to clipboard."
-    echo "Paste it into your LLM, then save the response to a file (e.g., \`changes.diff\`)."
-    echo "Finally, run \`llm_apply changes.diff\` to apply the edits."
+      echo "### IMPORTANT RULES for the context blocks:"
+      echo "-   **CRITICAL**: The \`start_after\` and \`end_before\` blocks must be **unique and stable**. Choose context that is unlikely to change, like function signatures or stable surrounding code."
+      echo "-   Include indentation **exactly** as it appears in the original file. Whitespace matters."
+      echo "-   To **insert** code, the \`start_after\` and \`end_before\` blocks should be adjacent in the original file."
+      echo "-   To **replace** code, the \`start_after\` and \`end_before\` blocks should have the code-to-be-replaced between them."
+      echo "-   To create a **new file**, use \`file: path/to/new/file.ext\` and leave the other sections (start_after, end_before, content) blank, except for the new file content inside the \`content\` section."
+      echo ""
+      echo "Now, please fulfill my request using the context and format provided."
+    } | "${clip_cmd_arr[@]}"
+    
+    echo "✅ Prompt for 'semantic patch' generated and copied."
+    echo "Paste it into your LLM, save the response to a file (e.g., \`changes.md\`),"
+    echo "and run \`llm_apply changes.md\` to apply the edits."
     return 0
   fi  
 
@@ -369,10 +389,9 @@ function llm() {
   if [[ ! -e "$target_path" ]]; then echo "Error: Path '$target_path' does not exist." >&2; return 1; fi
   target_path=$(realpath "$target_path" 2>/dev/null || readlink -f "$target_path" 2>/dev/null || echo "$target_path")
 
-  local clip_cmd_arr=() # ... clipboard detection logic (truncated for brevity)
+  local clip_cmd_arr=()
   if [[ "$output_to_clipboard" -eq 1 ]]; then
-    if command -v pbcopy >/dev/null 2>&1; then clip_cmd_arr=("pbcopy");
-    elif command -v wl-copy >/dev/null 2>&1; then clip_cmd_arr=("wl-copy");
+    if command -v wl-copy >/dev/null 2>&1; then clip_cmd_arr=("wl-copy");
     elif command -v xsel >/dev/null 2>&1; then clip_cmd_arr=("xsel" "--clipboard" "--input");
     elif [[ "$raw_output" -eq 0 ]]; then
         echo "Warning: No clipboard utility found. Cannot copy to clipboard." >&2; output_to_clipboard=0;
@@ -388,25 +407,30 @@ function llm() {
     if [[ -f "$target_path" ]]; then
       # Handle a single file
       echo "--- FILE: $(basename "$target_path") ---"
-      cat "$target_path" # Simplified for brevity, original logic is fine
+      local extension="${target_path##*.}"
+      if [[ " ${DATA_EXTENSIONS[@]} " =~ " ${extension} " ]]; then
+        local line_count=$(wc -l < "$target_path" | tr -d ' ')
+        if (( line_count > MAX_DATA_FILE_LINES )); then
+          if [[ "$verbose" -eq 1 ]]; then echo "     (truncating data file, ${line_count} lines > ${MAX_DATA_FILE_LINES})" >&2; fi
+          _llm_smart_truncate "$target_path" "$MAX_DATA_FILE_LINES"
+        else
+          cat "$target_path"
+        fi
+      else
+        cat "$target_path"
+      fi
       echo
     else
-      # ======================================================================
-      # --- MODIFIED: Handle a directory with combined ignore logic ---
-      # ======================================================================
+      # Handle a directory with combined ignore logic
       local all_ignore_patterns=("${default_ignore_patterns[@]}")
       
-      # --- Nested Helper to read ignore files ---
       function _llm_read_ignore_file() {
           local file_to_read="$1"
           if [[ "$verbose" -eq 1 ]]; then echo ":information_source: Reading ignore patterns from $file_to_read" >&2; fi
           
           while IFS= read -r line || [[ -n "$line" ]]; do
-              # Trim whitespace and skip empty lines/comments
               local pattern=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
               [[ -z "$pattern" ]] || [[ "$pattern" =~ ^# ]] && continue
-
-              # Handle git's negation syntax (warn and skip, as it's complex for `find`)
               if [[ "$pattern" == "!"* ]]; then
                   if [[ "$verbose" -eq 1 ]]; then
                       echo "     (Warning: Negation pattern '$pattern' is not supported and will be ignored.)" >&2
@@ -417,7 +441,6 @@ function llm() {
           done < "$file_to_read"
       }
       
-      # --- Find project root by searching upwards for .git ---
       local search_root=""
       local current_path="$target_path"
       while [[ "$current_path" != "/" && -n "$current_path" ]]; do
@@ -427,13 +450,11 @@ function llm() {
           fi
           current_path=$(dirname "$current_path")
       done
-      # If no .git dir found, the project root is the target path itself
       if [[ -z "$search_root" ]]; then
         search_root="$target_path"
       fi
-      if [[ "$verbose" -eq 1 ]]; then echo ":file_folder: Project root identified as: $search_root" >&2; fi
+      if [[ "$verbose" -eq 1 && -d "${search_root}/.git" ]]; then echo ":file_folder: Project root identified as: $search_root" >&2; fi
 
-      # --- Read .gitignore and .llmignore ---
       local gitignore_file="${search_root}/.gitignore"
       if [[ -f "$gitignore_file" ]]; then
           _llm_read_ignore_file "$gitignore_file"
@@ -444,7 +465,6 @@ function llm() {
           _llm_read_ignore_file "$llmignore_file"
       fi
 
-      # --- Construct find command ---
       local prune_paths=(); local exclude_conditions=()
       for pattern in "${all_ignore_patterns[@]}"; do
         if [[ "$pattern" == */ ]]; then
@@ -463,30 +483,22 @@ function llm() {
       fi
       find_args+=(-type f "${exclude_conditions[@]}" -print0)
 
-      # --- Execute find from the search_root for consistent pathing ---
       (
         cd "$search_root" || { echo "Error: Could not change to $search_root" >&2; return 1; }
-        
-        # Determine the relative path to scan from the search root
         local relative_target_path
         if [[ "$target_path" == "$search_root" ]]; then
             relative_target_path="."
         else
-            # Get path of target relative to search_root
             relative_target_path="${target_path#$search_root/}"
         fi
-
         find "$relative_target_path" "${find_args[@]}"
       ) | while IFS= read -r -d '' file; do
         local clean_file=${file#./}
         local abs_file="${search_root}/${clean_file}"
         
-        # Check if file is text-based
         if [[ "$(file -b --mime-type "$abs_file" 2>/dev/null)" == text/* || "$(file -b --mime-type "$abs_file" 2>/dev/null)" == application/json || "$(file -b --mime-type "$abs_file" 2>/dev/null)" == application/xml ]]; then
           if [[ "$verbose" -eq 1 ]]; then echo "  -> Adding $clean_file" >&2; fi
           echo "--- FILE: $clean_file ---"
-
-          # Smart truncation logic... (original logic is fine)
           local extension="${clean_file##*.}"
           if [[ " ${DATA_EXTENSIONS[@]} " =~ " ${extension} " ]]; then
             local line_count=$(wc -l < "$abs_file" | tr -d ' ')
@@ -504,10 +516,8 @@ function llm() {
       done
     fi
   } | {
-    # ... Output piping logic (tee, cat, etc.) ...
-    # This part remains the same.
     if [[ "$raw_output" -eq 1 ]]; then
-      cat # Just pass content through to stdout
+      cat
     elif [[ "$save_to_file" -eq 1 && "$output_to_clipboard" -eq 1 ]]; then
       tee "$output_path" | "${clip_cmd_arr[@]}"
     elif [[ "$save_to_file" -eq 1 ]]; then
@@ -517,7 +527,6 @@ function llm() {
     fi
   }
 
-  # --- Final Report (suppressed in raw mode) ---
   if [[ "$raw_output" -eq 0 ]]; then
       local char_count=0
       if [[ "$save_to_file" -eq 1 && -f "$output_path" ]]; then
@@ -529,114 +538,169 @@ function llm() {
         fi
       fi
       local token_estimate=$(( (char_count + 3) / 4 ))
-
       if [[ "$output_to_clipboard" -eq 1 ]]; then echo ":white_check_mark: Content from '$(basename "$target_path")' copied to clipboard."; fi
       if [[ "$save_to_file" -eq 1 ]]; then echo "   ~${token_estimate} tokens saved to: $output_path";
       else echo "   (File not saved: use default behavior or --save-only to save)"; fi
   fi
 }
 
-
+# -----------------------------------------------------------------------------
+# llm_apply - Applies a "semantic patch" v2 generated by an LLM.
+#
+# This version uses a robust multi-line matching algorithm to find the
+# precise location for a code change, preventing errors caused by
+# non-unique single-line markers.
+# -----------------------------------------------------------------------------
 function llm_apply() {
-  if ! command -v diff >/dev/null 2>&1; then echo "Error: 'diff' command is not found." >&2; return 1; fi
-  if ! command -v gawk >/dev/null 2>&1; then echo "Error: 'gawk' command is not found." >&2; return 1; fi
-  
+  # --- Dependencies ---
+  if ! command -v gawk >/dev/null 2>&1; then echo "Error: 'gawk' not found." >&2; return 1; fi
+  if ! command -v diff >/dev/null 2>&1; then echo "Error: 'diff' not found." >&2; return 1; fi
+
+  # --- Zsh-specific options ---
   zmodload zsh/zutil
   zparseopts -D -E -- \
-    d=dry_run -dry-run=dry_run \
     i=interactive -interactive=interactive \
     b=backup -backup=backup
 
   if [[ $# -ne 1 ]]; then
-    echo "Usage: llm_apply [-d | -i] [-b] <llm_response.md>" >&2
-    return 1
+    echo "Usage: llm_apply [-i] [-b] <llm_response.md>" >&2; return 1
   fi
-
   local input_file="$1"
-  if [[ ! -f "$input_file" ]]; then
-    echo "Error: Input file not found: $input_file" >&2
-    return 1
-  fi
+  if [[ ! -f "$input_file" ]]; then echo "Error: Input file not found: $input_file" >&2; return 1; fi
 
-  gawk '
-    BEGIN {
-        start_regex = "^`{3,}[a-zA-Z0-9._-]+:([^`[:space:]]+)"
-    }
-    
-    # Rule 1: Handle the start-of-file delimiter
-    match($0, start_regex, parts) {
-        if (in_block) {
-            printf "%s\0%s\0", current_path, current_content
-        }
-        in_block = 1
-        current_path = parts[1]
-        current_content = ""
-        next
-    }
+  # --- Helper function to find the line number of a multi-line pattern ---
+  # Returns the line number where the *last* line of the pattern was found.
+  _llm_find_multiline_pattern() {
+    local file_to_search="$1"
+    local pattern_to_find="$2"
 
-    # Rule 2: If we are in a block, append the line as content.
-    # This is the corrected part. The condition `in_block` is now a
-    # "pattern", and the code to execute is the "action" in `{}`.
-    in_block {
-        gsub(/\r/, "", $0)
-        current_content = current_content $0 "\n"
-    }
-    
-    END {
-        if (in_block) {
-            printf "%s\0%s\0", current_path, current_content
+    # If pattern is empty, it's not findable.
+    if [[ -z "$pattern_to_find" ]]; then echo ""; return; fi
+
+    # Awk script to find a multi-line needle in a haystack file.
+    gawk -v pattern="$pattern_to_find" '
+      BEGIN {
+        n = split(pattern, pattern_arr, "\n")
+        # Handle trailing newline in pattern from shell command substitution
+        if (pattern_arr[n] == "") {
+          n--
         }
-    }
-  ' "$input_file" | while IFS= read -r -d '' file_path && IFS= read -r -d '' new_content; do
-    
-    file_path=$(echo -n "$file_path" | xargs)
+        if (n == 0) exit 1;
+      }
+      {
+        # Store current line in a circular buffer (our sliding window)
+        window[NR % n] = $0
+        
+        # Once the window is full, start comparing
+        if (NR >= n) {
+          match = 1
+          for (i = 1; i <= n; i++) {
+            # Modulo arithmetic to get the correct index in the circular buffer
+            idx = (NR - n + i - 1) % n
+            if (window[idx] != pattern_arr[i]) {
+              match = 0
+              break
+            }
+          }
+          if (match) {
+            print NR # Print the line number of the *last* line of the match
+            exit 0  # Exit after first match
+          }
+        }
+      }
+    ' "$file_to_search"
+  }
+  
+  # --- Main processing loop ---
+  # Use awk to split the input file into change blocks based on "[END CHANGE]"
+  gawk 'BEGIN { RS = "\\[END CHANGE\\]" } { if ($0 ~ /\[BEGIN CHANGE\]/) print $0 }' "$input_file" | \
+  while IFS= read -r block; do
+    block=$(printf "%s" "$block" | tr -d '\r')
+
+    local file_path=$(echo "$block" | awk -F': *' '/^file:/ {print $2; exit}')
+    # Use sed to extract multi-line blocks between delimiters
+    local start_after=$(echo "$block" | sed -n '/^start_after:/,/^---$/p' | sed '1d;$d')
+    local end_before=$(echo "$block" | sed -n '/^end_before:/,/^---$/p' | sed '1d;$d')
+    local new_content=$(echo "$block" | sed -n '/^content:/,/^---$/p' | sed '1d;$d')
+
     if [[ -z "$file_path" ]]; then continue; fi
 
-    new_content=${new_content%?
-}
-    if [[ "${new_content##*$'\n'}" =~ ^\s*\`{3,}\s*$ ]]; then
-      new_content="${new_content%$'\n'*}"
-    fi
-
     echo "\n─────────────────────────────────────────────────────"
-    echo "File from LLM: $file_path"
+    echo "Applying change to: $file_path"
     echo "─────────────────────────────────────────────────────"
 
-    local apply_changes=0
-    if [[ -n "$dry_run" || -n "$interactive" ]]; then
-      if [[ -f "$file_path" ]]; then
-        echo "Found existing file. Generating diff..."
-        diff -u --color=always "$file_path" <(printf "%s" "$new_content") || true
-      else
-        echo "File does not exist locally. Will be created."
-        printf "%s" "$new_content" | sed 's/^/+ /'
-      fi
-
-      if [[ -n "$interactive" ]]; then
-        vared -p 'Apply this change? [y/N/q] ' -c reply
+    # --- Case 1: NEW FILE ---
+    if [[ ! -f "$file_path" ]]; then
+        echo "File does not exist. This change will create a new file."
+        printf "%s\n" "$new_content" | sed 's/^/+ /'
+        
+        vared -p 'Create this file? [y/N/q] ' -c reply
         case "$reply" in
-          [yY]) apply_changes=1 ;;
+          [yY])
+            echo "-> Creating file: $file_path"
+            mkdir -p "$(dirname "$file_path")"
+            # No backup needed for a new file
+            printf "%s" "$new_content" > "$file_path"
+            echo "✅ Applied."
+            ;;
           [qQ]) echo "Quitting."; return 0 ;;
-          *) echo "Skipping."; apply_changes=0 ;;
+          *) echo "🚫 Skipped." ;;
         esac
-      fi
-    else
-      apply_changes=1
+        continue
     fi
+    
+    # --- Case 2: MODIFY EXISTING FILE ---
+    local start_line_num_end_of_block=$(_llm_find_multiline_pattern "$file_path" "$start_after")
+    local end_line_num_end_of_block=$(_llm_find_multiline_pattern "$file_path" "$end_before")
 
-    if [[ $apply_changes -eq 1 ]]; then
-      if [[ ! -d "$(dirname "$file_path")" ]]; then mkdir -p "$(dirname "$file_path")"; fi
-      if [[ -n "$backup" && -f "$file_path" ]]; then cp "$file_path" "${file_path}.bak"; fi
-      
-      echo "-> Writing changes to $file_path"
-      printf "%s" "$new_content" > "$file_path"
-      echo "✅ Applied."
-    elif [[ -z "$dry_run" ]]; then
-      echo "🚫 Skipped."
+    if [[ -z "$start_line_num_end_of_block" || -z "$end_line_num_end_of_block" ]]; then
+      echo "🚫 Error: Could not find unique start_after or end_before context in '$file_path'." >&2
+      echo "   Please check the markers provided by the LLM." >&2
+      continue
     fi
+    
+    # Calculate the start of the 'end_before' block
+    local num_lines_in_end_before_block=$(echo "$end_before" | wc -l)
+    local end_line_num=$((end_line_num_end_of_block - num_lines_in_end_before_block + 1))
+    local start_line_num=$start_line_num_end_of_block
+
+    if (( start_line_num >= end_line_num )); then
+      echo "🚫 Error: 'start_after' context appears on or after 'end_before' context." >&2
+      echo "   This usually means the markers are incorrect or overlapping." >&2
+      continue
+    fi
+    
+    # Extract the old content for diffing (from line AFTER start_after to line BEFORE end_before)
+    local old_content=$(sed -n "$((start_line_num + 1)),$((end_line_num - 1))p" "$file_path")
+
+    echo "Found markers. Code to be replaced is between line $start_line_num and $end_line_num. Generating diff..."
+    diff -u --color=always <(printf "%s\n" "$old_content") <(printf "%s\n" "$new_content") || true
+
+    vared -p 'Apply this change? [y/N/q] ' -c reply
+    case "$reply" in
+      [yY])
+        if [[ -n "$backup" ]]; then
+            echo "-> Backing up original file to ${file_path}.bak"
+            cp "$file_path" "${file_path}.bak"
+        fi
+        
+        # Create the new file content in memory by combining the parts
+        {
+          # 1. Head of file, up to and including the start_after block
+          sed -n "1,${start_line_num}p" "$file_path"
+          # 2. The new content from the LLM
+          printf "%s\n" "$new_content"
+          # 3. Tail of file, starting from the end_before block
+          sed -n "${end_line_num},\$p" "$file_path"
+        } > "${file_path}.tmp" && mv "${file_path}.tmp" "$file_path"
+
+        echo "✅ Applied."
+        ;;
+      [qQ]) echo "Quitting."; return 0 ;;
+      *) echo "🚫 Skipped." ;;
+    esac
   done
 
   echo "\n─────────────────────────────────────────────────────"
   echo "All changes processed."
-  if [[ -n "$dry_run" ]]; then echo "Dry run complete. No files were changed."; fi
 }
