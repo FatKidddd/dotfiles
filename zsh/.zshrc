@@ -36,7 +36,7 @@ export LS_COLORS="rs=0:no=00:mi=00:mh=00:ln=01;36:or=01;31:di=01;34:ow=04;01;34:
 
 # Uncomment one of the following lines to change the auto-update behavior
 # zstyle ':omz:update' mode disabled  # disable automatic updates
-# zstyle ':omz:update' mode auto      # update automatically without asking
+zstyle ':omz:update' mode auto      # update automatically without asking
 # zstyle ':omz:update' mode reminder  # just remind me to update when it's time
 
 # Uncomment the following line to change how often to auto-update (in days).
@@ -87,26 +87,26 @@ ZSH_HIGHLIGHT_PATTERNS=('rm -rf *' 'fg=white,bold,bg=red')
 plugins=(
     command-not-found
     extract
-    deno
-    docker
+    # deno
+    # docker
     git
-    github
-    gitignore
+    # github
+    # gitignore
     fzf
-    node
-    npm
-    nvm
+    # node
+    # npm
+    # nvm
     poetry
-    yarn
+    # yarn
     volta
     vscode
-    sudo
-    web-search
-    z
+    # sudo
+    # web-search
+    zoxide
     zsh-autosuggestions
     zsh-syntax-highlighting
-    zsh-history-substring-search
-    ohmyzsh-full-autoupdate
+    # zsh-history-substring-search
+    # ohmyzsh-full-autoupdate
 )
 
 source $ZSH/oh-my-zsh.sh
@@ -159,221 +159,12 @@ alias l="eza -ah --color=auto --group-directories-first --icons"
 alias :q="exit"
 
 alias lg="lazygit"
+alias c="clear"
 
 alias cdde="cd /mnt/c/Users/justi/Desktop/";
 alias cddo="cd /mnt/c/Users/justi/Downloads/";
 
-# -----------------------------------------------------------------------------
-# llm - Concatenate project files for Large Language Model context
-#
-# By default, treats all files as code (never truncated). Smartly truncates
-# common data/log files if they exceed a line limit.
-#
-# Usage:
-#   llm [-v] [-c] [-s] [path]
-#
-#   -v, --verbose        : Print files as they are being processed.
-#   -c, --clipboard-only : Only copy content to clipboard, do not save to file.
-#   -s, --save-only      : Only save content to file, do not copy to clipboard.
-#   path                 : Directory or file to process (defaults to current dir).
-# -----------------------------------------------------------------------------
-function llm() {
-  # --- Configuration ---
-  # Line limit for DATA files. Code files will ignore this limit.
-  local MAX_DATA_FILE_LINES=200
-  # List of extensions to be treated as DATA (will be truncated if too long).
-  # Any file NOT in this list is treated as code and will be included in full.
-  local DATA_EXTENSIONS=(
-    csv json jsonl log txt xml tsv
-  )
-  # Default ignored directories, files, and extensions (can be extended by .llmignore)
-  local ignore_dirs_basenames=( .git .idea .vscode .next .svelte-kit .terragrunt-cache .terraform node_modules venv .venv __pycache__ dist build target public/build coverage cache .cache vendor obj bin )
-  local ignore_files_basenames=( .DS_Store package-lock.json yarn.lock pnpm-lock.yaml composer.lock )
-  local ignore_exts_basenames=( 7z a ar rar so tar tgz zip bmp gif jpeg jpg png svg webp heic avi flv mkv mov mp3 mp4 mpeg ogg wav pdf doc docx odt xls xlsx eot otf ttf woff woff2 bin class com dll dylib exe o pyc db db3-journal lock sqlite sqlite3 swp swo min.css min.js )
-
-  # --- Nested Helper Function for Smart Truncation ---
-  # This function is only called for DATA files that are too long.
-  function _llm_smart_truncate() {
-    local file_path="$1"
-    local max_lines="$2"
-    local truncate_notice="\n... (file content truncated for brevity) ...\n"
-
-    local filename=$(basename -- "$file_path")
-    local extension="${filename##*.}"
-
-    case "$extension" in
-      csv)
-        head -n "$max_lines" "$file_path"; echo -e "$truncate_notice" ;;
-      json)
-        if command -v jq >/dev/null 2>&1; then
-          jq "walk(
-                if type == \"array\" and length > $max_lines then .[:$max_lines]
-                elif type == \"object\" and (keys | length) > $max_lines then . as \$obj | keys[:$max_lines] | map({(.) : \$obj[.]}) | add
-                else .
-                end
-              )" "$file_path" 2>/dev/null || \
-              { echo "--- Note: JQ failed, using generic truncation ---" >&2; head -n $((max_lines / 2)) "$file_path"; echo -e "$truncate_notice"; tail -n $((max_lines / 2)) "$file_path"; }
-        else
-          head -n $((max_lines / 2)) "$file_path"; echo -e "$truncate_notice"; tail -n $((max_lines / 2)) "$file_path"
-        fi
-        ;;
-      log)
-        echo "[Log file truncated. Showing the most recent $max_lines lines.]"; echo -e "$truncate_notice"; tail -n "$max_lines" "$file_path" ;;
-      *) # Generic fallback for other data types like .txt, .xml, etc.
-        head -n $((max_lines / 2)) "$file_path"; echo -e "$truncate_notice"; tail -n $((max_lines / 2)) "$file_path" ;;
-    esac
-  }
-
-  # --- Argument Parsing ---
-  local target_path="."
-  local verbose=0
-  local output_to_clipboard=1; local save_to_file=1
-  local parsed_args=()
-  for arg in "$@"; do
-    case "$arg" in
-      -v | --verbose) verbose=1 ;;
-      -c | --clipboard-only) output_to_clipboard=1; save_to_file=0 ;;
-      -s | --save-only) output_to_clipboard=0; save_to_file=1 ;;
-      -*) echo "Error: Unknown option '$arg'" >&2; return 1 ;;
-      *) parsed_args+=("$arg") ;;
-    esac
-  done
-  if [[ ${#parsed_args[@]} -gt 1 ]]; then echo "Error: Only one path argument allowed." >&2; return 1; elif [[ ${#parsed_args[@]} -eq 1 ]]; then target_path="${parsed_args[1]}"; fi
-
-  # --- Initial Setup ---
-  if [[ ! -e "$target_path" ]]; then echo "Error: Path '$target_path' does not exist." >&2; return 1; fi
-  target_path=$(realpath "$target_path" 2>/dev/null || readlink -f "$target_path" 2>/dev/null || echo "$target_path")
-
-  # --- CLIPBOARD COMMAND DETECTION ---
-  local clip_cmd_arr=()
-  if [[ "$output_to_clipboard" -eq 1 ]]; then
-    if command -v pbcopy >/dev/null 2>&1; then clip_cmd_arr=(pbcopy);
-    elif command -v wl-copy >/dev/null 2>&1; then clip_cmd_arr=(wl-copy);
-    elif command -v xsel >/dev/null 2>&1; then clip_cmd_arr=(xsel --clipboard --input);
-    else echo "Warning: No clipboard utility found. Cannot copy to clipboard." >&2; output_to_clipboard=0; fi
-  fi
-  if [[ "$output_to_clipboard" -eq 1 && ${#clip_cmd_arr[@]} -eq 0 ]]; then echo "Error: Clipboard output requested but no valid clipboard utility found." >&2; return 1; fi
-
-  local output_dir="$HOME/.llm_contexts"
-  if [[ "$save_to_file" -eq 1 ]]; then mkdir -p "$output_dir"; fi
-  local base_name=${$(basename "$target_path"):-$(basename "$PWD")}; local timestamp=$(date +%Y%m%d-%H%M%S); local output_file="${base_name}-${timestamp}.txt"; local output_path="${output_dir}/${output_file}"
-
-  # --- Main Processing Block ---
-  # This block generates the content and then pipes it to the chosen destinations
-  {
-    if [[ -f "$target_path" ]]; then
-      # Handle a single file
-      echo "--- FILE: $(basename "$target_path") ---"
-      local extension="${target_path##*.}"
-      # Check if the file's extension IS a known data type
-      if [[ " ${DATA_EXTENSIONS[@]} " =~ " ${extension} " ]]; then
-        # It's a data file, so check its length for truncation
-        local line_count=$(wc -l < "$target_path" | tr -d ' ')
-        if (( line_count > MAX_DATA_FILE_LINES )); then
-          if [[ "$verbose" -eq 1 ]]; then echo "     (truncating data file, ${line_count} lines > ${MAX_DATA_FILE_LINES})" >&2; fi
-          _llm_smart_truncate "$target_path" "$MAX_DATA_FILE_LINES"
-        else
-          cat "$target_path"
-        fi
-      else
-        # It's not a known data type, so treat it as code and include it all
-        cat "$target_path"
-      fi
-      echo
-    else
-      # Handle a directory
-      local project_root="$target_path"
-      local effective_ignore_dirs_basenames=("${ignore_dirs_basenames[@]}")
-      local effective_ignore_files_basenames=("${ignore_files_basenames[@]}")
-      local effective_ignore_exts_basenames=("${ignore_exts_basenames[@]}")
-      local effective_ignore_wholenames=()
-
-      local llmignore_file="${project_root}/.llmignore"
-      if [[ -f "$llmignore_file" ]]; then
-        if [[ "$verbose" -eq 1 ]]; then echo ":information_source: Loading ignores from $llmignore_file" >&2; fi
-        while IFS= read -r line || [[ -n "$line" ]]; do
-          local pattern=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-          [[ -z "$pattern" ]] || [[ "$pattern" =~ ^# ]] && continue
-          if [[ "$pattern" == *\/* ]]; then effective_ignore_wholenames+=("$pattern");
-          elif [[ "$pattern" == *.* ]]; then [[ "$pattern" == .* ]] && effective_ignore_exts_basenames+=("${pattern#.}") || effective_ignore_files_basenames+=("$pattern");
-          else effective_ignore_files_basenames+=("$pattern"); fi
-        done < "$llmignore_file"
-      fi
-
-      local find_cmd=("find" ".")
-      local find_conditions=()
-      local default_dir_prune_conditions=(); for dir_name in "${effective_ignore_dirs_basenames[@]}"; do default_dir_prune_conditions+=(-o -name "$dir_name"); done
-      if [[ ${#default_dir_prune_conditions[@]} -gt 0 ]]; then find_conditions+=(-type d \( "${default_dir_prune_conditions[@]:1}" \) -prune -o); fi
-      local llmignore_wholename_conditions=(); for pat in "${effective_ignore_wholenames[@]}"; do llmignore_wholename_conditions+=(-o -wholename "$pat"); done
-      if [[ ${#llmignore_wholename_conditions[@]} -gt 0 ]]; then find_conditions+=('!' \( "${llmignore_wholename_conditions[@]:1}" \) -o); fi
-      local file_basename_conditions=(); for ext in "${effective_ignore_exts_basenames[@]}"; do file_basename_conditions+=(-o -name "*.$ext"); done
-      for file_name in "${effective_ignore_files_basenames[@]}"; do file_basename_conditions+=(-o -name "$file_name"); done
-
-      find_cmd+=("${find_conditions[@]}"); find_cmd+=(-type f)
-      if [[ ${#file_basename_conditions[@]} -gt 0 ]]; then find_cmd+=('!' \( "${file_basename_conditions[@]:1}" \)); fi
-      find_cmd+=(-print0)
-
-      (
-        cd "$project_root" || { echo "Error: Could not change to $project_root" >&2; return 1; }
-        "${find_cmd[@]}"
-      ) | while IFS= read -r -d '' file; do
-        local abs_file="${project_root}/${file}"
-        if [[ "$(file -b --mime-type "$abs_file" 2>/dev/null)" == text/* || "$(file -b --mime-type "$abs_file" 2>/dev/null)" == application/json || "$(file -b --mime-type "$abs_file" 2>/dev/null)" == application/xml ]]; then
-          if [[ "$verbose" -eq 1 ]]; then echo "  -> Adding $file" >&2; fi
-          echo "--- FILE: $file ---"
-
-          local extension="${file##*.}"
-          # Check if the file's extension IS a known data type
-          if [[ " ${DATA_EXTENSIONS[@]} " =~ " ${extension} " ]]; then
-            # It's a data file, so check its length for truncation
-            local line_count=$(wc -l < "$abs_file" | tr -d ' ')
-            if (( line_count > MAX_DATA_FILE_LINES )); then
-              if [[ "$verbose" -eq 1 ]]; then echo "     (truncating data file, ${line_count} lines > ${MAX_DATA_FILE_LINES})" >&2; fi
-              _llm_smart_truncate "$abs_file" "$MAX_DATA_FILE_LINES"
-            else
-              cat "$abs_file"
-            fi
-          else
-            # It's not a known data type, so treat it as code and include it all
-            cat "$abs_file"
-          fi
-          echo; echo
-        fi
-      done
-    fi
-  } | {
-    # Dynamically handle output piping
-    local temp_output
-    if [[ "$save_to_file" -eq 1 ]]; then
-      # If saving, `tee` to file and then pipe to clipboard if needed
-      temp_output=$(tee "$output_path")
-    else
-      # If not saving, just pass content through with `cat`
-      temp_output=$(cat)
-    fi
-
-    if [[ "$output_to_clipboard" -eq 1 ]]; then
-      echo "$temp_output" | "${clip_cmd_arr[@]}"
-    fi
-  }
-
-  # --- Final Report ---
-  local char_count=0
-  if [[ "$save_to_file" -eq 1 && -f "$output_path" ]]; then
-    char_count=$(wc -c < "$output_path" | tr -d ' ')
-  elif [[ "$output_to_clipboard" -eq 1 && ${#clip_cmd_arr[@]} -gt 0 ]]; then
-    if command -v pbpaste >/dev/null 2>&1; then char_count=$(pbpaste | wc -c | tr -d ' ');
-    elif command -v xsel >/dev/null 2>&1; then char_count=$(xsel -o -b | wc -c | tr -d ' ');
-    elif command -v wl-paste >/dev/null 2>&1; then char_count=$(wl-paste | wc -c | tr -d ' ');
-    fi
-  fi
-  local token_estimate=$((char_count / 4))
-
-  if [[ "$output_to_clipboard" -eq 1 ]]; then echo ":white_check_mark: Content from '$(basename "$target_path")' copied to clipboard."; fi
-  if [[ "$save_to_file" -eq 1 ]]; then echo "   ~${token_estimate} tokens saved to: $output_path";
-  else echo "   (File not saved: use default behavior or --save-only to save)"; fi
-}
-
+alias gitzip="git archive HEAD -o ${PWD##*/}.zip"
 
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
@@ -405,3 +196,447 @@ export SDKMAN_DIR="$HOME/.sdkman"
 [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
 
 export JAVA_HOME="/usr/lib/jvm/java-21-openjdk-amd64"
+
+# Searches for and activates a Python .venv at the root of the current git repository.
+function vup() {
+  # 1. Find the root of the git repository.
+  # The '2>/dev/null' silences errors if you're not in a git repo.
+  local repo_root
+  repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
+
+  # 2. Check if we are actually in a git repository.
+  if [[ -z "$repo_root" ]]; then
+    echo "vup: Not inside a git repository." >&2
+    return 1
+  fi
+
+  # 3. Define the potential path to the activate script.
+  local venv_path="$repo_root/.venv/bin/activate"
+
+  # 4. Check if the activate script exists and source it.
+  if [[ -f "$venv_path" ]]; then
+    source "$venv_path"
+    echo "vup: Activated virtual environment at: $repo_root/.venv"
+  else
+    echo "vup: No '.venv/bin/activate' found at the root of this git repository." >&2
+    return 1
+  fi
+}
+
+alias pbcopy='xsel --clipboard --input'
+alias pbpaste='xsel --clipboard --output'
+
+# -----------------------------------------------------------------------------
+# llm - A multi-purpose LLM context and prompt generation tool.
+#
+# By default, concatenates project files for LLM context.
+# With the --prompt flag, it wraps that context in a structured
+# prompt for code generation tasks.
+#
+# Now extends .gitignore with .llmignore for a comprehensive ignore list.
+#
+# -- CONTEXT MODE --
+# Usage: llm [-v] [-c] [-s] [path]
+#
+# -- PROMPT MODE --
+# Usage: llm -p "Your request..." [path]
+# -----------------------------------------------------------------------------
+function llm() {
+  # --- Configuration ---
+  local MAX_DATA_FILE_LINES=200
+  local DATA_EXTENSIONS=(
+    "csv" "json" "jsonl" "log" "txt" "xml" "tsv"
+  )
+  local default_ignore_patterns=(
+    # Directories (must end with /)
+    ".git/" ".idea/" ".vscode/" ".next/" ".svelte-kit/" ".terragrunt-cache/" ".terraform/"
+    "node_modules/" "venv/" ".venv/" "__pycache__/" "dist/" "build/" "target/" "public/build/"
+    "coverage/" "cache/" ".cache/" "vendor/" "obj/" "bin/"
+    # Files by exact name
+    ".DS_Store" "package-lock.json" "yarn.lock" "pnpm-lock.yaml" "composer.lock"
+    # Files by wildcard pattern (binary/unhelpful)
+    "*.7z" "*.a" "*.ar" "*.rar" "*.so" "*.tar" "*.tgz" "*.zip" "*.bmp" "*.gif" "*.jpeg" "*.jpg" "*.png"
+    "*.svg" "*.webp" "*.heic" "*.avi" "*.flv" "*.mkv" "*.mov" "*.mp3" "*.mp4" "*.mpeg" "*.ogg" "*.wav"
+    "*.pdf" "*.doc" "*.docx" "*.odt" "*.xls" "*.xlsx" "*.eot" "*.otf" "*.ttf" "*.woff" "*.woff2"
+    "*.bin" "*.class" "*.com" "*.dll" "*.dylib" "*.exe" "*.o" "*.pyc" "*.db" "*.db3-journal"
+    "*.lock" "*.sqlite" "*.sqlite3" "*.swp" "*.swo" "*.min.css" "*.min.js"
+  )
+
+  # --- Nested Helper Function for Smart Truncation ---
+  function _llm_smart_truncate() {
+    local file_path="$1"; local max_lines="$2"
+    local truncate_notice="\n... (file content truncated for brevity) ...\n"
+    local filename=$(basename -- "$file_path"); local extension="${filename##*.}"
+    case "$extension" in
+      csv) head -n "$max_lines" "$file_path"; echo -e "$truncate_notice" ;;
+      json)
+        if command -v jq >/dev/null 2>&1; then
+          jq "walk(if type == \"array\" and length > 50 then .[:50] else . end)" "$file_path" 2>/dev/null || \
+          { echo "--- Note: JQ failed, using generic truncation ---" >&2; head -n $((max_lines / 2)) "$file_path"; echo -e "$truncate_notice"; tail -n $((max_lines / 2)) "$file_path"; }
+        else
+          head -n $((max_lines / 2)) "$file_path"; echo -e "$truncate_notice"; tail -n $((max_lines / 2)) "$file_path"
+        fi
+        ;;
+      log) echo "[Log file truncated. Showing the most recent $max_lines lines.]"; echo -e "$truncate_notice"; tail -n "$max_lines" "$file_path" ;;
+      *) head -n $((max_lines / 2)) "$file_path"; echo -e "$truncate_notice"; tail -n $((max_lines / 2)) "$file_path" ;;
+    esac
+  }
+
+  # --- Argument Parsing ---
+  local target_path="."
+  local verbose=0
+  local output_to_clipboard=1
+  local save_to_file=1
+  local raw_output=0
+  local user_prompt=""
+  
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -p|--prompt)
+        if [[ -z "$2" || "$2" == -* ]]; then
+          echo "Error: --prompt option requires an argument." >&2; return 1;
+        fi
+        user_prompt="$2"; shift 2 ;;
+      -v|--verbose) verbose=1; shift ;;
+      -c|--clipboard-only) output_to_clipboard=1; save_to_file=0; shift ;;
+      -s|--save-only) output_to_clipboard=0; save_to_file=1; shift ;;
+      --raw) raw_output=1; verbose=1; output_to_clipboard=0; save_to_file=0; shift ;;
+      -*) echo "Error: Unknown option '$1'" >&2; return 1 ;;
+      *)
+        if [[ -n "$target_path" && "$target_path" != "." ]]; then
+          echo "Error: Only one path argument allowed." >&2; return 1;
+        fi
+        target_path="$1"; shift ;;
+    esac
+  done
+
+  # --- Mode Detection ---
+  if [[ -n "$user_prompt" ]]; then
+    # =========================================================================
+    # --- PROMPT GENERATION MODE (REVISED) ---
+    # =========================================================================
+    local clip_cmd_arr=(); if command -v pbcopy >/dev/null 2>&1; then clip_cmd_arr=("pbcopy"); elif command -v wl-copy >/dev/null 2>&1; then clip_cmd_arr=("wl-copy"); elif command -v xsel >/dev/null 2>&1; then clip_cmd_arr=("xsel" "--clipboard" "--input"); else echo "Error: No clipboard utility found." >&2; return 1; fi
+    if [[ "$verbose" -eq 1 ]]; then echo "Generating project context for prompt..." >&2; fi
+
+       {
+      echo "You are an expert programmer and senior software architect."
+      echo "Your task is to fulfill the user's request by providing the complete, updated content for any modified files."
+      echo ""
+      echo "# User Request"
+      echo "$user_prompt"
+      echo ""
+      echo "---"
+      echo "# Project Context"
+      echo "The following is the current state of the relevant files:"
+      echo ""
+      llm --raw "$target_path"
+      echo ""
+      echo "---"
+      echo "# Instructions for Your Response and ALL SUBSEQUENT RESPONSES"
+      echo ""
+      echo "1.  Start with a brief, one-paragraph summary of the changes you made."
+      echo "2.  After the summary, provide the **complete, updated content** for every file you modified or created."
+      echo "3.  **DO NOT** use diffs or patches. I need the full file content to ensure accuracy."
+      echo "4.  You **MUST** format each file's content within a Markdown code block."
+      echo "5.  The info string for each Markdown code block **MUST** follow this exact format: \`language:path/to/the/file.ext\`"
+      echo ""
+      echo "### Example Response Format:"
+      echo "\`\`\`"
+      echo "I have refactored the database connection to use a connection pool."
+      echo ""
+      echo "\`\`\`\`javascript:src/api/db.js"
+      echo "// The full, modified content of db.js"
+      echo "const { Pool } = require('pg');"
+      echo "const pool = new Pool({ connectionString: 'postgres://user:pass@host:port/db' });"
+      echo "module.exports = pool;"
+      echo "\`\`\`\`"
+      echo "\`\`\`"
+      echo ""
+      echo "Now, please fulfill my request using the context provided."
+
+    } | "${clip_cmd_arr[@]}" 
+
+    echo ":white_check_mark: Prompt successfully generated and copied to clipboard."
+    echo "Paste it into your LLM, then save the response to a file (e.g., \`changes.diff\`)."
+    echo "Finally, run \`llm_apply changes.diff\` to apply the edits."
+    return 0
+  fi  
+
+  # =========================================================================
+  # --- CONTEXT CONCATENATION MODE (Original Behavior) ---
+  # =========================================================================
+
+  if [[ ! -e "$target_path" ]]; then echo "Error: Path '$target_path' does not exist." >&2; return 1; fi
+  target_path=$(realpath "$target_path" 2>/dev/null || readlink -f "$target_path" 2>/dev/null || echo "$target_path")
+
+  local clip_cmd_arr=() # ... clipboard detection logic (truncated for brevity)
+  if [[ "$output_to_clipboard" -eq 1 ]]; then
+    if command -v pbcopy >/dev/null 2>&1; then clip_cmd_arr=("pbcopy");
+    elif command -v wl-copy >/dev/null 2>&1; then clip_cmd_arr=("wl-copy");
+    elif command -v xsel >/dev/null 2>&1; then clip_cmd_arr=("xsel" "--clipboard" "--input");
+    elif [[ "$raw_output" -eq 0 ]]; then
+        echo "Warning: No clipboard utility found. Cannot copy to clipboard." >&2; output_to_clipboard=0;
+    fi
+  fi
+
+  local output_dir="$HOME/.llm_contexts"
+  if [[ "$save_to_file" -eq 1 ]]; then mkdir -p "$output_dir"; fi
+  local base_name=$(basename "$target_path" 2>/dev/null || basename "$PWD")
+  local timestamp=$(date +%Y%m%d-%H%M%S); local output_file="${base_name}-${timestamp}.txt"; local output_path="${output_dir}/${output_file}"
+
+  {
+    if [[ -f "$target_path" ]]; then
+      # Handle a single file
+      echo "--- FILE: $(basename "$target_path") ---"
+      cat "$target_path" # Simplified for brevity, original logic is fine
+      echo
+    else
+      # ======================================================================
+      # --- MODIFIED: Handle a directory with combined ignore logic ---
+      # ======================================================================
+      local all_ignore_patterns=("${default_ignore_patterns[@]}")
+      
+      # --- Nested Helper to read ignore files ---
+      function _llm_read_ignore_file() {
+          local file_to_read="$1"
+          if [[ "$verbose" -eq 1 ]]; then echo ":information_source: Reading ignore patterns from $file_to_read" >&2; fi
+          
+          while IFS= read -r line || [[ -n "$line" ]]; do
+              # Trim whitespace and skip empty lines/comments
+              local pattern=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+              [[ -z "$pattern" ]] || [[ "$pattern" =~ ^# ]] && continue
+
+              # Handle git's negation syntax (warn and skip, as it's complex for `find`)
+              if [[ "$pattern" == "!"* ]]; then
+                  if [[ "$verbose" -eq 1 ]]; then
+                      echo "     (Warning: Negation pattern '$pattern' is not supported and will be ignored.)" >&2
+                  fi
+                  continue
+              fi
+              all_ignore_patterns+=("$pattern")
+          done < "$file_to_read"
+      }
+      
+      # --- Find project root by searching upwards for .git ---
+      local search_root=""
+      local current_path="$target_path"
+      while [[ "$current_path" != "/" && -n "$current_path" ]]; do
+          if [[ -d "${current_path}/.git" ]]; then
+              search_root="$current_path"
+              break
+          fi
+          current_path=$(dirname "$current_path")
+      done
+      # If no .git dir found, the project root is the target path itself
+      if [[ -z "$search_root" ]]; then
+        search_root="$target_path"
+      fi
+      if [[ "$verbose" -eq 1 ]]; then echo ":file_folder: Project root identified as: $search_root" >&2; fi
+
+      # --- Read .gitignore and .llmignore ---
+      local gitignore_file="${search_root}/.gitignore"
+      if [[ -f "$gitignore_file" ]]; then
+          _llm_read_ignore_file "$gitignore_file"
+      fi
+      
+      local llmignore_file="${search_root}/.llmignore"
+      if [[ -f "$llmignore_file" ]]; then
+          _llm_read_ignore_file "$llmignore_file"
+      fi
+
+      # --- Construct find command ---
+      local prune_paths=(); local exclude_conditions=()
+      for pattern in "${all_ignore_patterns[@]}"; do
+        if [[ "$pattern" == */ ]]; then
+            prune_paths+=("-o" "-path" "./${pattern}*")
+        elif [[ "$pattern" == *"/"* ]]; then
+            exclude_conditions+=("-not" "-path" "./$pattern")
+        else
+            exclude_conditions+=("-not" "-name" "$pattern")
+        fi
+      done
+      
+      local find_args=()
+      if [ ${#prune_paths[@]} -gt 0 ]; then
+        find_args+=(\( "${prune_paths[@]:1}" \))
+        find_args+=(-prune -o)
+      fi
+      find_args+=(-type f "${exclude_conditions[@]}" -print0)
+
+      # --- Execute find from the search_root for consistent pathing ---
+      (
+        cd "$search_root" || { echo "Error: Could not change to $search_root" >&2; return 1; }
+        
+        # Determine the relative path to scan from the search root
+        local relative_target_path
+        if [[ "$target_path" == "$search_root" ]]; then
+            relative_target_path="."
+        else
+            # Get path of target relative to search_root
+            relative_target_path="${target_path#$search_root/}"
+        fi
+
+        find "$relative_target_path" "${find_args[@]}"
+      ) | while IFS= read -r -d '' file; do
+        local clean_file=${file#./}
+        local abs_file="${search_root}/${clean_file}"
+        
+        # Check if file is text-based
+        if [[ "$(file -b --mime-type "$abs_file" 2>/dev/null)" == text/* || "$(file -b --mime-type "$abs_file" 2>/dev/null)" == application/json || "$(file -b --mime-type "$abs_file" 2>/dev/null)" == application/xml ]]; then
+          if [[ "$verbose" -eq 1 ]]; then echo "  -> Adding $clean_file" >&2; fi
+          echo "--- FILE: $clean_file ---"
+
+          # Smart truncation logic... (original logic is fine)
+          local extension="${clean_file##*.}"
+          if [[ " ${DATA_EXTENSIONS[@]} " =~ " ${extension} " ]]; then
+            local line_count=$(wc -l < "$abs_file" | tr -d ' ')
+            if (( line_count > MAX_DATA_FILE_LINES )); then
+              if [[ "$verbose" -eq 1 ]]; then echo "     (truncating data file, ${line_count} lines > ${MAX_DATA_FILE_LINES})" >&2; fi
+              _llm_smart_truncate "$abs_file" "$MAX_DATA_FILE_LINES"
+            else
+              cat "$abs_file"
+            fi
+          else
+            cat "$abs_file"
+          fi
+          echo; echo
+        fi
+      done
+    fi
+  } | {
+    # ... Output piping logic (tee, cat, etc.) ...
+    # This part remains the same.
+    if [[ "$raw_output" -eq 1 ]]; then
+      cat # Just pass content through to stdout
+    elif [[ "$save_to_file" -eq 1 && "$output_to_clipboard" -eq 1 ]]; then
+      tee "$output_path" | "${clip_cmd_arr[@]}"
+    elif [[ "$save_to_file" -eq 1 ]]; then
+      cat > "$output_path"
+    elif [[ "$output_to_clipboard" -eq 1 ]]; then
+      "${clip_cmd_arr[@]}"
+    fi
+  }
+
+  # --- Final Report (suppressed in raw mode) ---
+  if [[ "$raw_output" -eq 0 ]]; then
+      local char_count=0
+      if [[ "$save_to_file" -eq 1 && -f "$output_path" ]]; then
+        char_count=$(wc -m < "$output_path" | tr -d ' ')
+      elif [[ "$output_to_clipboard" -eq 1 && ${#clip_cmd_arr[@]} -gt 0 ]]; then
+        if command -v pbpaste >/dev/null 2>&1; then char_count=$(pbpaste | wc -m | tr -d ' ');
+        elif command -v wl-paste >/dev/null 2>&1; then char_count=$(wl-paste | wc -m | tr -d ' ');
+        elif command -v xsel >/dev/null 2>&1; then char_count=$(xsel -o -b | wc -m | tr -d ' ');
+        fi
+      fi
+      local token_estimate=$(( (char_count + 3) / 4 ))
+
+      if [[ "$output_to_clipboard" -eq 1 ]]; then echo ":white_check_mark: Content from '$(basename "$target_path")' copied to clipboard."; fi
+      if [[ "$save_to_file" -eq 1 ]]; then echo "   ~${token_estimate} tokens saved to: $output_path";
+      else echo "   (File not saved: use default behavior or --save-only to save)"; fi
+  fi
+}
+
+
+function llm_apply() {
+  if ! command -v diff >/dev/null 2>&1; then echo "Error: 'diff' command is not found." >&2; return 1; fi
+  if ! command -v gawk >/dev/null 2>&1; then echo "Error: 'gawk' command is not found." >&2; return 1; fi
+  
+  zmodload zsh/zutil
+  zparseopts -D -E -- \
+    d=dry_run -dry-run=dry_run \
+    i=interactive -interactive=interactive \
+    b=backup -backup=backup
+
+  if [[ $# -ne 1 ]]; then
+    echo "Usage: llm_apply [-d | -i] [-b] <llm_response.md>" >&2
+    return 1
+  fi
+
+  local input_file="$1"
+  if [[ ! -f "$input_file" ]]; then
+    echo "Error: Input file not found: $input_file" >&2
+    return 1
+  fi
+
+  gawk '
+    BEGIN {
+        start_regex = "^`{3,}[a-zA-Z0-9._-]+:([^`[:space:]]+)"
+    }
+    
+    # Rule 1: Handle the start-of-file delimiter
+    match($0, start_regex, parts) {
+        if (in_block) {
+            printf "%s\0%s\0", current_path, current_content
+        }
+        in_block = 1
+        current_path = parts[1]
+        current_content = ""
+        next
+    }
+
+    # Rule 2: If we are in a block, append the line as content.
+    # This is the corrected part. The condition `in_block` is now a
+    # "pattern", and the code to execute is the "action" in `{}`.
+    in_block {
+        gsub(/\r/, "", $0)
+        current_content = current_content $0 "\n"
+    }
+    
+    END {
+        if (in_block) {
+            printf "%s\0%s\0", current_path, current_content
+        }
+    }
+  ' "$input_file" | while IFS= read -r -d '' file_path && IFS= read -r -d '' new_content; do
+    
+    file_path=$(echo -n "$file_path" | xargs)
+    if [[ -z "$file_path" ]]; then continue; fi
+
+    new_content=${new_content%?
+}
+    if [[ "${new_content##*$'\n'}" =~ ^\s*\`{3,}\s*$ ]]; then
+      new_content="${new_content%$'\n'*}"
+    fi
+
+    echo "\n─────────────────────────────────────────────────────"
+    echo "File from LLM: $file_path"
+    echo "─────────────────────────────────────────────────────"
+
+    local apply_changes=0
+    if [[ -n "$dry_run" || -n "$interactive" ]]; then
+      if [[ -f "$file_path" ]]; then
+        echo "Found existing file. Generating diff..."
+        diff -u --color=always "$file_path" <(printf "%s" "$new_content") || true
+      else
+        echo "File does not exist locally. Will be created."
+        printf "%s" "$new_content" | sed 's/^/+ /'
+      fi
+
+      if [[ -n "$interactive" ]]; then
+        vared -p 'Apply this change? [y/N/q] ' -c reply
+        case "$reply" in
+          [yY]) apply_changes=1 ;;
+          [qQ]) echo "Quitting."; return 0 ;;
+          *) echo "Skipping."; apply_changes=0 ;;
+        esac
+      fi
+    else
+      apply_changes=1
+    fi
+
+    if [[ $apply_changes -eq 1 ]]; then
+      if [[ ! -d "$(dirname "$file_path")" ]]; then mkdir -p "$(dirname "$file_path")"; fi
+      if [[ -n "$backup" && -f "$file_path" ]]; then cp "$file_path" "${file_path}.bak"; fi
+      
+      echo "-> Writing changes to $file_path"
+      printf "%s" "$new_content" > "$file_path"
+      echo "✅ Applied."
+    elif [[ -z "$dry_run" ]]; then
+      echo "🚫 Skipped."
+    fi
+  done
+
+  echo "\n─────────────────────────────────────────────────────"
+  echo "All changes processed."
+  if [[ -n "$dry_run" ]]; then echo "Dry run complete. No files were changed."; fi
+}
