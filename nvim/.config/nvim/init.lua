@@ -41,8 +41,6 @@ vim.o.expandtab = true
 vim.o.linebreak = true
 vim.o.hlsearch = true
 
--- WARNING: Pushing api key here - Consider moving to environment variables
-
 -- [[ Basic Keymaps ]]
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
@@ -529,15 +527,15 @@ require('lazy').setup({
 
   {
     -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-    'folke/tokyonight.nvim',
-    -- 'rebelot/kanagawa.nvim',
+    -- 'folke/tokyonight.nvim',
+    'rebelot/kanagawa.nvim',
     -- 'EdenEast/nightfox.nvim',
     -- 'catppuccin/nvim',
     -- 'rose-pine/neovim',
     priority = 1000, -- Make sure to load this before all the other start plugins.
     init = function()
-      vim.cmd.colorscheme 'tokyonight-night'
-      -- vim.cmd.colorscheme 'kanagawa'
+      -- vim.cmd.colorscheme 'tokyonight-night'
+      vim.cmd.colorscheme 'kanagawa'
       -- vim.cmd.colorscheme 'carbonfox'
       -- vim.cmd.colorscheme 'catppuccin-mocha'
       -- vim.cmd.colorscheme 'rose-pine-main'
@@ -637,15 +635,15 @@ require('lazy').setup({
     end,
   },
 
-  -- {
-  --   'iamcco/markdown-preview.nvim',
-  --   cmd = { 'MarkdownPreviewToggle', 'MarkdownPreview', 'MarkdownPreviewStop' },
-  --   ft = { 'markdown' },
-  --   build = 'cd app && yarn install',
-  --   init = function()
-  --     vim.g.mkdp_filetypes = { 'markdown' }
-  --   end,
-  -- },
+  {
+    'iamcco/markdown-preview.nvim',
+    cmd = { 'MarkdownPreviewToggle', 'MarkdownPreview', 'MarkdownPreviewStop' },
+    ft = { 'markdown' },
+    build = 'cd app && yarn install',
+    init = function()
+      vim.g.mkdp_filetypes = { 'markdown' }
+    end,
+  },
 
   {
     'xeluxee/competitest.nvim',
@@ -739,67 +737,160 @@ require('lazy').setup({
   },
 
   { 'nvim-neorg/neorg', lazy = false, version = '*', config = true },
+  {
+    'zbirenbaum/copilot.lua',
+    event = 'InsertEnter',
+    opts = {
+      panel = {
+        enabled = false,
+      },
+      suggestion = {
+        auto_trigger = true,
+        hide_during_completion = false,
+        keymap = {
+          accept = '<Tab>',
+        },
+      },
+    },
+  },
 
   {
     'yetone/avante.nvim',
+    -- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
+    -- ⚠️ must add this setting! ! !
+    build = function()
+      -- conditionally use the correct build system for the current OS
+      if vim.fn.has 'win32' == 1 then
+        return 'powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false'
+      else
+        return 'make'
+      end
+    end,
+    event = 'VeryLazy',
     lazy = false,
     version = false,
+    ---@module 'avante'
+    ---@type avante.Config
     opts = {
-      -- provider = 'deepseek',
-      vendors = {
-        deepseek = { __inherited_from = 'openai', api_key_name = 'DEEPSEEK_API_KEY', endpoint = 'https://api.deepseek.com', model = 'deepseek-coder' },
-      },
-      -- behaviour = { enable_token_counting = false },
-      -- mappings = { suggestion = { accept = '<Tab>', next = '<M-]>', prev = '<M-[>', dismiss = '<C-]>' } },
-      provider = 'gemini', -- Recommend using Claude
-      -- auto_suggestions_provider = "copilot", -- Since auto-suggestions are a high-frequency operation and therefore expensive, it is recommended to specify an inexpensive provider or even a free provider: copilot
+      mappings = { suggestion = { accept = '<Tab>', next = '<M-]>', prev = '<M-[>', dismiss = '<C-]>' } },
       behaviour = {
         auto_suggestions = false, -- Experimental stage
         auto_set_highlight_group = true,
         auto_set_keymaps = true,
         auto_apply_diff_after_generation = false,
         support_paste_from_clipboard = false,
+        auto_approve_tool_permissions = true,
       },
-
-      -- @see https://ai.google.dev/gemini-api/docs/models/gemini
-      gemini = {
-        model = 'gemini-2.5-flash-preview-05-20',
-        temperature = 0,
-        max_tokens = 81920,
-      },
-
-      disable_tools = true,
-      -- vendors = {
-      --   ---@type AvanteSupportedProvider
-      --   ['gemini-flash'] = {
-      --     __inherited_from = 'gemini',
-      --     model = 'gemini-2.5-flash-preview-05-20',
-      --   },
-      --   ---@type AvanteSupportedProvider
-      --   ['gemini-pro'] = {
-      --     __inherited_from = 'gemini',
-      --     model = 'gemini-2.5-pro-preview-05-06',
-      --   },
-      --   temperature = 0,
-      --   max_tokens = 4096,
+      auto_suggestions_provider = 'deepinfra-chat',
+      -- suggestion = {
+      --   debounce = 300,
+      --   throttle = 600,
       -- },
+      -- WARNING: Since auto-suggestions are a high-frequency operation and therefore expensive,
+      -- currently designating it as `copilot` provider is dangerous because: https://github.com/yetone/avante.nvim/issues/1048
+      -- Of course, you can reduce the request frequency by increasing `suggestion.debounce`.
+      provider = 'deepinfra', -- no idea why deepseek keeps thinking forever, and can't call shit
+      providers = {
+        deepseek = {
+          __inherited_from = 'openai',
+          api_key_name = 'DEEPSEEK_API_KEY',
+          endpoint = 'https://api.deepseek.com',
+          model = 'deepseek-chat',
+          extra_request_body = {
+            temperature = 0,
+          },
+        },
+        deepinfra = {
+          __inherited_from = 'openai',
+          api_key_name = 'DEEP_INFRA_API_KEY',
+          endpoint = 'https://api.deepinfra.com/v1/openai',
+          model = 'deepseek-ai/DeepSeek-R1-0528',
+          extra_request_body = {
+            temperature = 0.75,
+          },
+        },
+        ['deepinfra-chat'] = {
+          __inherited_from = 'openai',
+          api_key_name = 'DEEP_INFRA_API_KEY',
+          endpoint = 'https://api.deepinfra.com/v1/openai',
+          model = 'deepseek-ai/DeepSeek-V3-0324',
+          timeout = 30000, -- in ms
+          extra_request_body = {
+            temperature = 0.75,
+            max_tokens = 20480,
+          },
+        },
+        novita_ai = {
+          __inherited_from = 'openai',
+          api_key_name = 'NOVITA_AI_API_KEY',
+          endpoint = 'https://api.novita.ai/v3/openai',
+          model = 'deepseek/deepseek-r1-0528',
+          extra_request_body = {
+            temperature = 0.75,
+          },
+        },
+        gemini = {
+          model = 'gemini-2.5-flash-preview-05-20',
+          extra_request_body = {
+            temperature = 1,
+            max_tokens = 1000000,
+          },
+        },
+        ['gemini-pro'] = {
+          __inherited_from = 'gemini',
+          model = 'gemini-2.5-pro-preview-06-05',
+          extra_request_body = {
+            temperature = 1,
+            max_tokens = 1000000,
+          },
+        },
+        ['gemini-flash-2.0'] = {
+          __inherited_from = 'gemini',
+          model = 'gemini-2.0-flash',
+          extra_request_body = {
+            temperature = 1,
+            max_tokens = 1500000,
+          },
+        },
+      },
     },
-    build = 'make',
     dependencies = {
-      'nvim-treesitter/nvim-treesitter',
-      'stevearc/dressing.nvim',
       'nvim-lua/plenary.nvim',
       'MunifTanjim/nui.nvim',
-      'echasnovski/mini.pick',
-      'nvim-telescope/telescope.nvim',
-      'ibhagwan/fzf-lua',
-      'nvim-tree/nvim-web-devicons',
+      --- The below dependencies are optional,
+      'echasnovski/mini.pick', -- for file_selector provider mini.pick
+      'nvim-telescope/telescope.nvim', -- for file_selector provider telescope
+      'hrsh7th/nvim-cmp', -- autocompletion for avante commands and mentions
+      'ibhagwan/fzf-lua', -- for file_selector provider fzf
+      'stevearc/dressing.nvim', -- for input provider dressing
+      'folke/snacks.nvim', -- for input provider snacks
+      'nvim-tree/nvim-web-devicons', -- or echasnovski/mini.icons
+      'zbirenbaum/copilot.lua', -- for providers='copilot'
       {
+        -- support for image pasting
         'HakonHarnes/img-clip.nvim',
         event = 'VeryLazy',
-        opts = { default = { embed_image_as_base64 = false, prompt_for_file_name = false, drag_and_drop = { insert_mode = true }, use_absolute_path = true } },
+        opts = {
+          -- recommended settings
+          default = {
+            embed_image_as_base64 = false,
+            prompt_for_file_name = false,
+            drag_and_drop = {
+              insert_mode = true,
+            },
+            -- required for Windows users
+            use_absolute_path = true,
+          },
+        },
       },
-      { 'MeanderingProgrammer/render-markdown.nvim', opts = { file_types = { 'markdown', 'Avante' } }, ft = { 'markdown', 'Avante' } },
+      {
+        -- Make sure to set this up properly if you have lazy=true
+        'MeanderingProgrammer/render-markdown.nvim',
+        opts = {
+          file_types = { 'markdown', 'Avante' },
+        },
+        ft = { 'markdown', 'Avante' },
+      },
     },
   },
 
