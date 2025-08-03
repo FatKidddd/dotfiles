@@ -176,7 +176,7 @@ VOLTA_FEATURE_PNPM=1
 export VOLTA_HOME="$HOME/.volta"
 export PATH="$VOLTA_HOME/bin:$PATH"
 
-alias npm=pnpm
+# alias npm=pnpm
 
 export PYENV_ROOT="$HOME/.pyenv"
 [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
@@ -268,20 +268,37 @@ function llm() {
     local truncate_notice="\n... (file content truncated for brevity) ...\n"
     local filename=$(basename -- "$file_path"); local extension="${filename##*.}"
     case "$extension" in
-      csv) head -n "$max_lines" "$file_path"; echo -e "$truncate_notice" ;;
+      csv)
+        # head is generally safe, but adding redirection is good practice.
+        head -n "$max_lines" "$file_path" < /dev/null
+        echo -e "$truncate_notice"
+        ;;
       json)
         if command -v jq >/dev/null 2>&1; then
-          jq "walk(if type == \"array\" and length > 50 then .[:50] else . end)" "$file_path" 2>/dev/null || \
-          { echo "--- Note: JQ failed, using generic truncation ---" >&2; head -n $((max_lines / 2)) "$file_path"; echo -e "$truncate_notice"; tail -n $((max_lines / 2)) "$file_path"; }
+          # CRITICAL FIX: Redirect stdin from /dev/null to prevent jq from consuming the find output.
+          jq "walk(if type == \"array\" and length > 50 then .[:50] else . end)" "$file_path" < /dev/null 2>/dev/null || \
+          { echo "--- Note: JQ failed, using generic truncation ---" >&2; head -n $((max_lines / 2)) "$file_path" < /dev/null; echo -e "$truncate_notice"; tail -n $((max_lines / 2)) "$file_path" < /dev/null; }
         else
-          head -n $((max_lines / 2)) "$file_path"; echo -e "$truncate_notice"; tail -n $((max_lines / 2)) "$file_path"
+          # Apply the fix to head and tail as well for robustness.
+          head -n $((max_lines / 2)) "$file_path" < /dev/null
+          echo -e "$truncate_notice"
+          tail -n $((max_lines / 2)) "$file_path" < /dev/null
         fi
         ;;
-      log) echo "[Log file truncated. Showing the most recent $max_lines lines.]"; echo -e "$truncate_notice"; tail -n "$max_lines" "$file_path" ;;
-      *) head -n $((max_lines / 2)) "$file_path"; echo -e "$truncate_notice"; tail -n $((max_lines / 2)) "$file_path" ;;
+      log)
+        echo "[Log file truncated. Showing the most recent $max_lines lines.]"
+        echo -e "$truncate_notice"
+        # Apply the fix to tail as well.
+        tail -n "$max_lines" "$file_path" < /dev/null
+        ;;
+      *)
+        # Apply the fix to head and tail here too.
+        head -n $((max_lines / 2)) "$file_path" < /dev/null
+        echo -e "$truncate_notice"
+        tail -n $((max_lines / 2)) "$file_path" < /dev/null
+        ;;
     esac
-  }
-
+  }  
   # --- Argument Parsing ---
   local target_path="."
   local verbose=0
@@ -315,7 +332,7 @@ function llm() {
     # =========================================================================
     # --- PROMPT GENERATION MODE (REVISED) ---
     # =========================================================================
-    local clip_cmd_arr=(); if command -v pbcopy >/dev/null 2>&1; then clip_cmd_arr=("pbcopy"); elif command -v wl-copy >/dev/null 2>&1; then clip_cmd_arr=("wl-copy"); elif command -v xsel >/dev/null 2>&1; then clip_cmd_arr=("xsel" "--clipboard" "--input"); else echo "Error: No clipboard utility found." >&2; return 1; fi
+    local clip_cmd_arr=(); if command -v wl-copy >/dev/null 2>&1; then clip_cmd_arr=("wl-copy"); elif command -v xsel >/dev/null 2>&1; then clip_cmd_arr=("xsel" "--clipboard" "--input"); else echo "Error: No clipboard utility found." >&2; return 1; fi
     if [[ "$verbose" -eq 1 ]]; then echo "Generating project context for prompt..." >&2; fi
 
        {
@@ -371,8 +388,7 @@ function llm() {
 
   local clip_cmd_arr=() # ... clipboard detection logic (truncated for brevity)
   if [[ "$output_to_clipboard" -eq 1 ]]; then
-    if command -v pbcopy >/dev/null 2>&1; then clip_cmd_arr=("pbcopy");
-    elif command -v wl-copy >/dev/null 2>&1; then clip_cmd_arr=("wl-copy");
+    if command -v wl-copy >/dev/null 2>&1; then clip_cmd_arr=("wl-copy");
     elif command -v xsel >/dev/null 2>&1; then clip_cmd_arr=("xsel" "--clipboard" "--input");
     elif [[ "$raw_output" -eq 0 ]]; then
         echo "Warning: No clipboard utility found. Cannot copy to clipboard." >&2; output_to_clipboard=0;
@@ -640,3 +656,13 @@ function llm_apply() {
   echo "All changes processed."
   if [[ -n "$dry_run" ]]; then echo "Dry run complete. No files were changed."; fi
 }
+
+
+export PATH="$HOME/vcpkg:$PATH"
+
+# opencode
+export PATH=/home/justin/.opencode/bin:$PATH
+
+export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+
+export PATH=$PATH:$HOME/go/bin

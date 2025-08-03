@@ -109,7 +109,7 @@ vim.keymap.set('n', 'N', 'Nzzzv', { desc = 'Previous search result and center' }
 vim.keymap.set('x', '<leader>p', [["_dP]], { desc = 'Paste without yanking (visual)' })
 vim.keymap.set({ 'n', 'v' }, '<leader>y', [["+y]], { desc = 'Yank to system clipboard' })
 vim.keymap.set('n', '<leader>Y', [["+Y]], { desc = 'Yank line to system clipboard' })
-vim.keymap.set({ 'n', 'v' }, '<leader>d', [["_d]], { desc = 'Delete to black hole register' })
+-- vim.keymap.set({ 'n', 'v' }, '<leader>d', [["_d]], { desc = 'Delete to black hole register' }) -- removed for gdb / pdb plugin
 vim.keymap.set('n', 'Q', '<nop>', { desc = 'Disable Ex mode' })
 vim.keymap.set('n', '<C-f>', '<cmd>silent !tmux new tmux-sessionizer<CR>', { desc = 'Open tmux sessionizer' })
 vim.keymap.set('n', '<leader>f', vim.lsp.buf.format, { desc = 'Format buffer (LSP)' })
@@ -742,7 +742,7 @@ require('lazy').setup({
     event = 'InsertEnter',
     opts = {
       panel = {
-        enabled = false,
+        enabled = true,
       },
       suggestion = {
         auto_trigger = true,
@@ -898,11 +898,28 @@ require('lazy').setup({
     'f-person/git-blame.nvim',
     event = 'VeryLazy',
     opts = {
-      enabled = false,
+      enabled = true,
       message_template = ' <summary> • <date> • <author> • <<sha>>',
       date_format = '%m-%d-%Y %H:%M:%S',
       virtual_text_column = nil,
     },
+  },
+
+  { 'sakhnik/nvim-gdb' },
+
+  {
+    'jpalardy/vim-slime',
+    config = function()
+      vim.g.slime_target = 'tmux'
+      vim.g.slime_default_config = {
+        socket_name = 'default',
+        target_pane = '{right-of}',
+      }
+      vim.g.slime_bracketed_paste = 1
+      -- jupyter lab --no-browser
+      -- jupyter kernel list
+      -- jupyer console --existing <>
+    end,
   },
 
   require 'kickstart.plugins.lint',

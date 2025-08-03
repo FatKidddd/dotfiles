@@ -36,3 +36,5 @@ command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
 
 . "$HOME/.cargo/env"
+
+export PATH="/home/justin/.local/share/solana/install/active_release/bin:$PATH"
