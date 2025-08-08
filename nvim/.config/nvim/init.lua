@@ -636,6 +636,8 @@ require('lazy').setup({
   },
 
   {
+    -- NOTE: use this on linux
+    -- :call mkdp#util#install()
     'iamcco/markdown-preview.nvim',
     cmd = { 'MarkdownPreviewToggle', 'MarkdownPreview', 'MarkdownPreviewStop' },
     ft = { 'markdown' },
