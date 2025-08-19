@@ -118,6 +118,32 @@ vim.keymap.set('n', '<leader>j', '<cmd>lprev<CR>zz', { desc = 'Previous location
 vim.keymap.set('n', '<leader>s', [[:%s/\<<C-r><C-w>\>/<C-r><C-w>/gI<Left><Left><Left>]], { desc = 'Substitute word under cursor' })
 vim.keymap.set('n', '<leader>vpp', '<cmd>e ~/.config/nvim/init.lua<CR>', { desc = 'Edit nvim config' })
 
+-- Wrap selection in a fenced code block
+local function wrap_in_code_block()
+  -- Use getpos() to reliably get the line numbers of the visual selection.
+  local _, start_line, _, _ = unpack(vim.fn.getpos "'<")
+  local _, end_line, _, _ = unpack(vim.fn.getpos "'>")
+  if start_line > end_line then
+    start_line, end_line = end_line, start_line
+  end
+
+  local selected_lines = vim.api.nvim_buf_get_lines(0, start_line - 1, end_line, false)
+
+  local lang = vim.fn.input 'Language: '
+  table.insert(selected_lines, 1, '```' .. lang)
+  table.insert(selected_lines, '```')
+  vim.api.nvim_buf_set_lines(0, start_line - 1, end_line, false, selected_lines)
+end
+
+vim.api.nvim_create_user_command('WrapInCodeBlock', wrap_in_code_block, {})
+
+-- Using ':<C-u>...' ensures that we exit visual mode, which correctly sets the '< and '> marks for the next operation.
+vim.keymap.set('v', '`', ':<C-u>WrapInCodeBlock<CR>', {
+  noremap = true,
+  silent = true,
+  desc = 'Wrap selection in a fenced code block',
+})
+
 -- Profiling Functions & Keymaps
 local PROFILE_LOG_FILE = vim.fn.stdpath 'data' .. '/profile.log'
 function _G.start_nvim_profiling()
