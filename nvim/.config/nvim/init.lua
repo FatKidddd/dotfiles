@@ -950,6 +950,66 @@ require('lazy').setup({
     end,
   },
 
+  {
+    'obsidian-nvim/obsidian.nvim',
+    version = '*', -- Use latest stable release
+    ft = 'markdown',
+    opts = {
+      legacy_commands = false,
+      workspaces = {
+        {
+          name = 'notes',
+          path = '~/Desktop/Notes',
+        },
+      },
+    },
+    keys = {
+      -- Normal mode keymaps
+      {
+        '<leader>oth',
+        '<cmd>Obsidian toggle_checkbox<cr>',
+        desc = 'Obsidian: Toggle checkbox (follows toggle inlay hint)',
+      },
+      {
+        '<leader>on',
+        '<cmd>Obsidian new<cr>',
+        desc = 'Obsidian: New note',
+      },
+      {
+        '<leader>of',
+        '<cmd>Obsidian search<cr>',
+        desc = 'Obsidian: Find note',
+      },
+      {
+        '<leader>oq',
+        '<cmd>Obsidian quick_switch<cr>',
+        desc = 'Obsidian: Quick switch',
+      },
+      {
+        '<leader>ot',
+        '<cmd>Obsidian today<cr>',
+        desc = "Obsidian: Today's note",
+      },
+      {
+        '<leader>ob',
+        '<cmd>Obsidian backlinks<cr>',
+        desc = 'Obsidian: Show backlinks',
+      },
+      {
+        'gf',
+        '<cmd>Obsidian follow_link<cr>',
+        desc = 'Obsidian: Follow link',
+      },
+      -- Visual mode keymap
+      {
+        '<leader>on',
+        '<cmd>Obsidian link_new<cr>',
+        mode = 'v',
+        desc = 'Obsidian: New note from selection',
+      },
+    },
+  },
+
   require 'kickstart.plugins.lint',
   require 'kickstart.plugins.autopairs',
   require 'kickstart.plugins.neo-tree',
