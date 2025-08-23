@@ -1027,53 +1027,27 @@ require('lazy').setup({
       }
     end,
   },
+
+  -- Spent 15 mins trying to get this scaling to work, still can't. what a waste of time, i hate neovim
+  -- NOTE: Use gx to open the image uri using system handler
   {
     '3rd/image.nvim',
     build = false,
     opts = {
-      backend = 'kitty',
       processor = 'magick_cli',
       integrations = {
         markdown = {
-          enabled = true,
-          clear_in_insert_mode = false,
-          download_remote_images = true,
-          only_render_image_at_cursor = true,
+          only_render_image_at_cursor = false,
           only_render_image_at_cursor_mode = 'popup',
           floating_windows = true,
-          filetypes = { 'markdown', 'vimwiki' },
-        },
-        neorg = {
-          enabled = true,
-          filetypes = { 'norg' },
-        },
-        typst = {
-          enabled = true,
-          filetypes = { 'typst' },
-        },
-        html = {
-          enabled = false,
-        },
-        css = {
-          enabled = false,
         },
       },
-      max_width = nil,
-      max_height = nil,
       max_width_window_percentage = 90,
       max_height_window_percentage = 80,
-      window_overlap_clear_enabled = false,
-      window_overlap_clear_ft_ignore = { 'cmp_menu', 'cmp_docs', 'snacks_notif', 'scrollview', 'scrollview_sign' },
-      editor_only_render_when_focused = false,
-      tmux_show_only_in_active_window = false,
-      hijack_file_patterns = { '*.png', '*.jpg', '*.jpeg', '*.gif', '*.webp', '*.avif' },
     },
-
-    config = function(_, opts)
-      require('image').setup(opts)
-    end,
   },
   require 'kickstart.plugins.lint',
+
   require 'kickstart.plugins.autopairs',
   require 'kickstart.plugins.neo-tree',
   require 'kickstart.plugins.gitsigns',
