@@ -147,7 +147,9 @@ else
 fi
 
 alias conf="nvim ~/dotfiles/zsh/.zshrc"
-alias nvimrc="nvim ~/dotfiles/nvim/.config/nvim/init.lua"
+alias nconf="nvim ~/dotfiles/nvim/.config/nvim/init.lua"
+alias tconf="nvim ~/dotfiles/tmux/.tmux.conf"
+alias notes="cd ~/Desktop/Notes && nvim"
 
 alias poet="source \$(poetry env info --path)/bin/activate"
 
@@ -194,8 +196,6 @@ export PATH="$PATH:$HOME/.foundry/bin"
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
 export SDKMAN_DIR="$HOME/.sdkman"
 [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
-
-export JAVA_HOME="/usr/lib/jvm/java-21-openjdk-amd64"
 
 # Searches for and activates a Python .venv at the root of the current git repository.
 function vup() {

@@ -34,8 +34,8 @@ vim.o.scrolloff = 10
 vim.o.confirm = true
 
 -- Your custom options
-vim.o.tabstop = 2
-vim.o.shiftwidth = 2
+vim.o.tabstop = 4
+vim.o.shiftwidth = 4
 vim.bo.softtabstop = 2
 vim.o.expandtab = true
 vim.o.linebreak = true
@@ -144,29 +144,31 @@ vim.keymap.set('v', '`', ':<C-u>WrapInCodeBlock<CR>', {
   desc = 'Wrap selection in a fenced code block',
 })
 
--- Profiling Functions & Keymaps
-local PROFILE_LOG_FILE = vim.fn.stdpath 'data' .. '/profile.log'
-function _G.start_nvim_profiling()
-  print 'Starting Neovim profiling...'
-  vim.cmd('profile start ' .. PROFILE_LOG_FILE)
-  vim.cmd 'profile func *'
-  vim.cmd 'profile file *'
-  vim.notify('Neovim profiling started. Do your slow actions now.', vim.log.levels.INFO, { title = 'Profiling' })
-end
+vim.keymap.set('n', '<leader>p', ':PasteImage<CR>', { noremap = true, silent = true, desc = 'Paste image from clipboard' })
 
-function _G.pause_nvim_profiling_and_quit()
-  print 'Pausing Neovim profiling and quitting all buffers...'
-  vim.cmd 'profile pause'
-  vim.notify('Neovim profiling paused. Closing Neovim to finalize log.', vim.log.levels.INFO, { title = 'Profiling' })
-  vim.cmd 'noautocmd qall!'
-end
-
-vim.keymap.set('n', '<leader>ps', function()
-  _G.start_nvim_profiling()
-end, { desc = 'Start Neovim Profiling' })
-vim.keymap.set('n', '<leader>pv', function()
-  _G.pause_nvim_profiling_and_quit()
-end, { desc = 'Pause Profiling and View Log (quits Neovim)' })
+-- -- Profiling Functions & Keymaps
+-- local PROFILE_LOG_FILE = vim.fn.stdpath 'data' .. '/profile.log'
+-- function _G.start_nvim_profiling()
+--   print 'Starting Neovim profiling...'
+--   vim.cmd('profile start ' .. PROFILE_LOG_FILE)
+--   vim.cmd 'profile func *'
+--   vim.cmd 'profile file *'
+--   vim.notify('Neovim profiling started. Do your slow actions now.', vim.log.levels.INFO, { title = 'Profiling' })
+-- end
+--
+-- function _G.pause_nvim_profiling_and_quit()
+--   print 'Pausing Neovim profiling and quitting all buffers...'
+--   vim.cmd 'profile pause'
+--   vim.notify('Neovim profiling paused. Closing Neovim to finalize log.', vim.log.levels.INFO, { title = 'Profiling' })
+--   vim.cmd 'noautocmd qall!'
+-- end
+--
+-- vim.keymap.set('n', '<leader>ps', function()
+--   _G.start_nvim_profiling()
+-- end, { desc = 'Start Neovim Profiling' })
+-- vim.keymap.set('n', '<leader>pv', function()
+--   _G.pause_nvim_profiling_and_quit()
+-- end, { desc = 'Pause Profiling and View Log (quits Neovim)' })
 
 -- [[ Basic Autocommands ]]
 vim.api.nvim_create_autocmd('TextYankPost', {
@@ -468,6 +470,11 @@ require('lazy').setup({
             require('lspconfig')[server_name].setup(server_opts)
           end,
           jdtls = function()
+            -- Get your home directory path in a way Neovim understands
+            local home = vim.fn.expand '~'
+            local j17_path = home .. '/.sdkman/candidates/java/17.0.12-tem'
+            local j21_path = home .. '/.sdkman/candidates/java/21.0.4-tem'
+
             require('java').setup {}
             require('lspconfig').jdtls.setup {
               capabilities = capabilities,
@@ -475,7 +482,9 @@ require('lazy').setup({
                 java = {
                   configuration = {
                     runtimes = {
-                      { name = 'JavaSE-21', path = '/usr/lib/jvm/java-21-openjdk-amd64/bin', default = true },
+                      -- { name = 'JavaSE-21', path = '/usr/lib/jvm/java-21-openjdk-amd64/bin', default = true },
+                      { name = 'JavaSE-17', path = j17_path },
+                      { name = 'JavaSE-21', path = j21_path, default = true },
                     },
                   },
                 },
@@ -1010,6 +1019,60 @@ require('lazy').setup({
     },
   },
 
+  {
+    'atiladefreitas/dooing',
+    config = function()
+      require('dooing').setup {
+        -- your custom config here (optional)
+      }
+    end,
+  },
+  {
+    '3rd/image.nvim',
+    build = false,
+    opts = {
+      backend = 'kitty',
+      processor = 'magick_cli',
+      integrations = {
+        markdown = {
+          enabled = true,
+          clear_in_insert_mode = false,
+          download_remote_images = true,
+          only_render_image_at_cursor = true,
+          only_render_image_at_cursor_mode = 'popup',
+          floating_windows = true,
+          filetypes = { 'markdown', 'vimwiki' },
+        },
+        neorg = {
+          enabled = true,
+          filetypes = { 'norg' },
+        },
+        typst = {
+          enabled = true,
+          filetypes = { 'typst' },
+        },
+        html = {
+          enabled = false,
+        },
+        css = {
+          enabled = false,
+        },
+      },
+      max_width = nil,
+      max_height = nil,
+      max_width_window_percentage = 90,
+      max_height_window_percentage = 80,
+      window_overlap_clear_enabled = false,
+      window_overlap_clear_ft_ignore = { 'cmp_menu', 'cmp_docs', 'snacks_notif', 'scrollview', 'scrollview_sign' },
+      editor_only_render_when_focused = false,
+      tmux_show_only_in_active_window = false,
+      hijack_file_patterns = { '*.png', '*.jpg', '*.jpeg', '*.gif', '*.webp', '*.avif' },
+    },
+
+    config = function(_, opts)
+      require('image').setup(opts)
+    end,
+  },
   require 'kickstart.plugins.lint',
   require 'kickstart.plugins.autopairs',
   require 'kickstart.plugins.neo-tree',
