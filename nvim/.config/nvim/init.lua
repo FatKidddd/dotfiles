@@ -145,6 +145,7 @@ vim.keymap.set('v', '`', ':<C-u>WrapInCodeBlock<CR>', {
 })
 
 vim.keymap.set('n', '<leader>p', ':PasteImage<CR>', { noremap = true, silent = true, desc = 'Paste image from clipboard' })
+vim.keymap.set('n', '<leader>td', ':Dooing<CR>', { noremap = true, silent = true, desc = 'Open Dooing todo list' })
 
 -- -- Profiling Functions & Keymaps
 -- local PROFILE_LOG_FILE = vim.fn.stdpath 'data' .. '/profile.log'
@@ -352,7 +353,6 @@ require('lazy').setup({
       'WhoIsSethDaniel/mason-tool-installer.nvim',
       { 'j-hui/fidget.nvim', opts = {} },
       'saghen/blink.cmp',
-      'nvim-java/nvim-java',
     },
     config = function()
       vim.api.nvim_create_autocmd('LspAttach', {
@@ -468,28 +468,6 @@ require('lazy').setup({
             local server_opts = servers[server_name] or {}
             server_opts.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server_opts.capabilities or {})
             require('lspconfig')[server_name].setup(server_opts)
-          end,
-          jdtls = function()
-            -- Get your home directory path in a way Neovim understands
-            local home = vim.fn.expand '~'
-            local j17_path = home .. '/.sdkman/candidates/java/17.0.12-tem'
-            local j21_path = home .. '/.sdkman/candidates/java/21.0.4-tem'
-
-            require('java').setup {}
-            require('lspconfig').jdtls.setup {
-              capabilities = capabilities,
-              settings = {
-                java = {
-                  configuration = {
-                    runtimes = {
-                      -- { name = 'JavaSE-21', path = '/usr/lib/jvm/java-21-openjdk-amd64/bin', default = true },
-                      { name = 'JavaSE-17', path = j17_path },
-                      { name = 'JavaSE-21', path = j21_path, default = true },
-                    },
-                  },
-                },
-              },
-            }
           end,
         },
       }
@@ -971,6 +949,11 @@ require('lazy').setup({
           path = '~/Desktop/Notes',
         },
       },
+      notes_subdir = 'general',
+      daily_notes = {
+        folder = 'dailies',
+      },
+      new_notes_location = 'notes_subdir',
     },
     keys = {
       -- Normal mode keymaps
@@ -1046,8 +1029,52 @@ require('lazy').setup({
       max_height_window_percentage = 80,
     },
   },
-  require 'kickstart.plugins.lint',
 
+  {
+    'nvim-java/nvim-java',
+    dependencies = {
+      {
+        'neovim/nvim-lspconfig',
+        opts = {
+          servers = {
+            -- Your JDTLS configuration goes here
+            jdtls = {
+              -- settings = {
+              --   java = {
+              --     configuration = {
+              --       runtimes = {
+              --         {
+              --           name = "JavaSE-23",
+              --           path = "/usr/local/sdkman/candidates/java/23-tem",
+              --         },
+              --       },
+              --     },
+              --   },
+              -- },
+            },
+          },
+          setup = {
+            jdtls = function()
+              -- Your nvim-java configuration goes here
+              require('java').setup {
+                -- root_markers = {
+                --   "settings.gradle",
+                --   "settings.gradle.kts",
+                --   "pom.xml",
+                --   "build.gradle",
+                --   "mvnw",
+                --   "gradlew",
+                --   "build.gradle",
+                --   "build.gradle.kts",
+                -- },
+              }
+            end,
+          },
+        },
+      },
+    },
+  },
+  require 'kickstart.plugins.lint',
   require 'kickstart.plugins.autopairs',
   require 'kickstart.plugins.neo-tree',
   require 'kickstart.plugins.gitsigns',
