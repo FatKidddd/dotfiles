@@ -541,15 +541,15 @@ require('lazy').setup({
   {
     -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
     -- 'folke/tokyonight.nvim',
-    'rebelot/kanagawa.nvim',
-    -- 'EdenEast/nightfox.nvim',
+    -- 'rebelot/kanagawa.nvim',
+    'EdenEast/nightfox.nvim',
     -- 'catppuccin/nvim',
     -- 'rose-pine/neovim',
     priority = 1000, -- Make sure to load this before all the other start plugins.
     init = function()
       -- vim.cmd.colorscheme 'tokyonight-night'
-      vim.cmd.colorscheme 'kanagawa'
-      -- vim.cmd.colorscheme 'carbonfox'
+      -- vim.cmd.colorscheme 'kanagawa'
+      vim.cmd.colorscheme 'carbonfox'
       -- vim.cmd.colorscheme 'catppuccin-mocha'
       -- vim.cmd.colorscheme 'rose-pine-main'
 
@@ -951,7 +951,7 @@ require('lazy').setup({
       },
       notes_subdir = 'general',
       daily_notes = {
-        folder = 'dailies',
+        folder = 'daily',
       },
       new_notes_location = 'notes_subdir',
     },
