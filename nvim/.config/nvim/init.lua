@@ -491,7 +491,7 @@ require('lazy').setup({
     opts = {
       notify_on_error = false,
       format_on_save = function(bufnr)
-        local disable_filetypes = { c = true, cpp = true, solidity = true }
+        local disable_filetypes = { c = true, cpp = true, solidity = true, java = true }
         if disable_filetypes[vim.bo[bufnr].filetype] then
           return nil
         else
@@ -773,17 +773,9 @@ require('lazy').setup({
     'yetone/avante.nvim',
     -- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
     -- ⚠️ must add this setting! ! !
-    build = function()
-      -- conditionally use the correct build system for the current OS
-      if vim.fn.has 'win32' == 1 then
-        return 'powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false'
-      else
-        return 'make'
-      end
-    end,
+    build = vim.fn.has 'win32' ~= 0 and 'powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false' or 'make',
     event = 'VeryLazy',
-    lazy = false,
-    version = false,
+    version = false, -- Never set this value to "*"! Never!
     ---@module 'avante'
     ---@type avante.Config
     opts = {
@@ -804,7 +796,7 @@ require('lazy').setup({
       -- WARNING: Since auto-suggestions are a high-frequency operation and therefore expensive,
       -- currently designating it as `copilot` provider is dangerous because: https://github.com/yetone/avante.nvim/issues/1048
       -- Of course, you can reduce the request frequency by increasing `suggestion.debounce`.
-      provider = 'deepinfra', -- no idea why deepseek keeps thinking forever, and can't call shit
+      provider = 'deepinfra-chat', -- no idea why deepseek keeps thinking forever, and can't call shit
       providers = {
         deepseek = {
           __inherited_from = 'openai',
@@ -828,11 +820,11 @@ require('lazy').setup({
           __inherited_from = 'openai',
           api_key_name = 'DEEP_INFRA_API_KEY',
           endpoint = 'https://api.deepinfra.com/v1/openai',
-          model = 'deepseek-ai/DeepSeek-V3-0324',
+          model = 'deepseek-ai/DeepSeek-V3.1',
           timeout = 30000, -- in ms
           extra_request_body = {
-            temperature = 0.75,
-            max_tokens = 20480,
+            temperature = 0.3,
+            -- max_tokens = 20480,
           },
         },
         novita_ai = {
