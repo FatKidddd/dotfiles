@@ -150,6 +150,7 @@ alias conf="nvim ~/dotfiles/zsh/.zshrc"
 alias nconf="nvim ~/dotfiles/nvim/.config/nvim/init.lua"
 alias tconf="nvim ~/dotfiles/tmux/.tmux.conf"
 alias notes="cd ~/Desktop/Notes && nvim"
+alias nus="cd ~/Desktop/NUS/2526S1"
 
 alias poet="source \$(poetry env info --path)/bin/activate"
 
@@ -163,8 +164,8 @@ alias :q="exit"
 alias lg="lazygit"
 alias c="clear"
 
-alias cdde="cd /mnt/c/Users/justi/Desktop/";
-alias cddo="cd /mnt/c/Users/justi/Downloads/";
+alias cdde="cd ~/Desktop/";
+alias cddo="cd ~/Downloads/";
 
 alias gitzip="git archive HEAD -o ${PWD##*/}.zip"
 
@@ -666,3 +667,6 @@ export PATH=/home/justin/.opencode/bin:$PATH
 export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
 
 export PATH=$PATH:$HOME/go/bin
+
+export PATH="$PATH:/usr/local/idea-IC-252.23892.409/bin"
+
