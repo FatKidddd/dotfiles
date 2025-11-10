@@ -1,4 +1,4 @@
-local notes_path = '~/Desktop/Notes'
+local notes_path = vim.fn.expand '~/Desktop/Notes'
 
 -- Set <space> as the leader key
 vim.g.mapleader = ' '
@@ -949,7 +949,20 @@ require('lazy').setup({
     'obsidian-nvim/obsidian.nvim',
     version = '*',
     ft = 'markdown',
-    dependencies = { 'nvim-lua/plenary.nvim', 'nvim-telescope/telescope.nvim' },
+    lazy = false,
+    -- event = 'VimEnter',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+      'nvim-telescope/telescope.nvim',
+      {
+        -- to remove obsidian ui warning
+        'MeanderingProgrammer/render-markdown.nvim',
+        opts = {
+          file_types = { 'markdown' },
+        },
+        ft = { 'markdown' },
+      },
+    },
 
     opts = {
       legacy_commands = false,
@@ -991,12 +1004,25 @@ require('lazy').setup({
           if note.title then
             note:add_alias(note.title)
           end
+
+          -- Preserve existing status, default to 'captured' for new notes
+          local status = 'captured'
+          if note.metadata and note.metadata.status then
+            status = note.metadata.status
+          end
+
+          -- Preserve existing created date, use current time for new notes
+          local created = os.date '%Y-%m-%d %H:%M'
+          if note.metadata and note.metadata.created then
+            created = note.metadata.created
+          end
+
           return {
             id = note.id,
-            status = 'captured',
+            status = status,
             aliases = note.aliases,
             tags = note.tags or {},
-            created = os.date '%Y-%m-%d %H:%M',
+            created = created,
           }
         end,
         sort = { 'id', 'status', 'aliases', 'tags', 'created' },
@@ -1031,7 +1057,7 @@ require('lazy').setup({
 
       -- Custom mappings for better workflow
       { '<leader>oL', '<cmd>ObsidianLevelUp<cr>', desc = 'Obsidian: [L]evel-Up Status' },
-      { '<leader>os', '<cmd>ObsidianSearchLearned<cr>', desc = 'Obsidian: [S]earch Learned Notes' },
+      { '<leader>oS', '<cmd>ObsidianSearchLearned<cr>', desc = 'Obsidian: [S]earch Learned Notes' },
       { '<leader>oV', '<cmd>ObsidianCopyValidationPrompt<cr>', desc = 'Obsidian: [V]alidate Explanation' },
     },
 
@@ -1096,14 +1122,76 @@ require('lazy').setup({
         require('telescope.builtin').live_grep {
           prompt_title = 'Search Processed Notes',
           search_dirs = { opts.workspaces[1].path },
-          additional_args = { '--glob', '*.md', '-e', 'status: processed' },
+          additional_args = { '--glob', '*.md' },
+          default_text = 'status: processed',
         }
+      end
+
+      -- The daily refresh just finds the oldest processed note
+      local function daily_refresh()
+        if _G.daily_refresh_has_run then
+          return
+        end
+        if vim.fn.executable 'rg' == 0 then
+          return
+        end
+
+        local vault_path = vim.fn.expand(opts.workspaces[1].path)
+        local result = vim.fn.system('rg -l "status: processed" --glob "*.md" ' .. vim.fn.shellescape(vault_path))
+
+        local files = vim.split(result, '\n', { trimempty = true })
+        if vim.tbl_isempty(files) then
+          return
+        end
+
+        local notes_with_mtime = {}
+        for _, filepath in ipairs(files) do
+          local stat = vim.loop.fs_stat(filepath)
+          if stat then
+            table.insert(notes_with_mtime, { path = filepath, mtime = stat.mtime.sec })
+          end
+        end
+
+        if vim.tbl_isempty(notes_with_mtime) then
+          return
+        end
+
+        table.sort(notes_with_mtime, function(a, b)
+          return a.mtime < b.mtime
+        end)
+        local chosen_note = notes_with_mtime[1]
+        local title = vim.fn.fnamemodify(chosen_note.path, ':t:r'):gsub('^%d+%-', ''):gsub('-', ' ')
+
+        -- Defer the UI to avoid needing to press enter
+        vim.schedule(function()
+          vim.ui.select({ 'Yes', 'Skip' }, {
+            prompt = 'Daily Refresh: ' .. title .. ' - Review this note?',
+          }, function(choice)
+            if choice == 'Yes' then
+              -- Update timestamp AND open the file
+              vim.fn.system('touch ' .. vim.fn.shellescape(chosen_note.path))
+              vim.cmd('edit ' .. vim.fn.fnameescape(chosen_note.path))
+              _G.daily_refresh_has_run = true
+            elseif choice == 'Skip' then
+              _G.daily_refresh_has_run = true
+            end
+          end)
+        end)
       end
 
       -- Create the minimal set of user commands.
       vim.api.nvim_create_user_command('ObsidianLevelUp', level_up_status, {})
       vim.api.nvim_create_user_command('ObsidianCopyValidationPrompt', copy_validation_prompt, {})
       vim.api.nvim_create_user_command('ObsidianSearchLearned', search_learned_notes, {})
+      vim.api.nvim_create_user_command('ObsidianDailyRefresh', daily_refresh, {})
+
+      -- Set up the daily refresh on VimEnter.
+      vim.api.nvim_create_autocmd('VimEnter', { pattern = '*', callback = daily_refresh })
+
+      -- -- Call daily refresh after setup
+      -- vim.defer_fn(function()
+      --   daily_refresh()
+      -- end, 100) -- 100ms delay to ensure everything is loaded
     end,
   },
 
