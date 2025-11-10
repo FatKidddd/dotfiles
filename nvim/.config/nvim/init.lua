@@ -1,5 +1,4 @@
 local notes_path = vim.fn.expand '~/Desktop/Notes'
-
 -- Set <space> as the leader key
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
@@ -1127,11 +1126,25 @@ require('lazy').setup({
         }
       end
 
-      -- The daily refresh just finds the oldest processed note
+      -- The refresh finds the oldest processed note (runs every few hours)
       local function daily_refresh()
-        if _G.daily_refresh_has_run then
-          return
+        -- Configuration: hours between refreshes
+        local hours_between_refresh = 4 -- Change this to your preference
+
+        -- Check if already run recently
+        local state_file = vim.fn.stdpath 'data' .. '/daily_refresh_last_run.txt'
+        local now = os.time()
+
+        if vim.fn.filereadable(state_file) == 1 then
+          local last_run = tonumber(vim.fn.readfile(state_file)[1])
+          if last_run then
+            local hours_since = (now - last_run) / 3600
+            if hours_since < hours_between_refresh then
+              return -- Not enough time has passed
+            end
+          end
         end
+
         if vim.fn.executable 'rg' == 0 then
           return
         end
@@ -1164,18 +1177,19 @@ require('lazy').setup({
 
         -- Defer the UI to avoid needing to press enter
         vim.schedule(function()
-          vim.ui.select({ 'Yes', 'Skip' }, {
-            prompt = 'Daily Refresh: ' .. title .. ' - Review this note?',
-          }, function(choice)
-            if choice == 'Yes' then
-              -- Update timestamp AND open the file
-              vim.fn.system('touch ' .. vim.fn.shellescape(chosen_note.path))
-              vim.cmd('edit ' .. vim.fn.fnameescape(chosen_note.path))
-              _G.daily_refresh_has_run = true
-            elseif choice == 'Skip' then
-              _G.daily_refresh_has_run = true
-            end
-          end)
+          local choice = vim.fn.confirm(
+            'Review "' .. title .. '"?',
+            '&Yes\n&Skip',
+            1 -- Default to Yes
+          )
+
+          if choice == 1 then -- Yes
+            vim.fn.system('touch ' .. vim.fn.shellescape(chosen_note.path))
+            vim.cmd('edit ' .. vim.fn.fnameescape(chosen_note.path))
+            vim.fn.writefile({ tostring(now) }, state_file)
+          elseif choice == 2 then -- Skip
+            vim.fn.writefile({ tostring(now) }, state_file)
+          end
         end)
       end
 
@@ -1187,11 +1201,6 @@ require('lazy').setup({
 
       -- Set up the daily refresh on VimEnter.
       vim.api.nvim_create_autocmd('VimEnter', { pattern = '*', callback = daily_refresh })
-
-      -- -- Call daily refresh after setup
-      -- vim.defer_fn(function()
-      --   daily_refresh()
-      -- end, 100) -- 100ms delay to ensure everything is loaded
     end,
   },
 
