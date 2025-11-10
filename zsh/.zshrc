@@ -198,28 +198,38 @@ export PATH="$PATH:$HOME/.foundry/bin"
 export SDKMAN_DIR="$HOME/.sdkman"
 [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
 
-# Searches for and activates a Python .venv at the root of the current git repository.
+# Searches upward for a Python .venv, stopping at .git directory.
 function vup() {
-  # 1. Find the root of the git repository.
-  # The '2>/dev/null' silences errors if you're not in a git repo.
-  local repo_root
-  repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
+  local current_dir="$PWD"
+  local found_venv=""
 
-  # 2. Check if we are actually in a git repository.
-  if [[ -z "$repo_root" ]]; then
-    echo "vup: Not inside a git repository." >&2
-    return 1
-  fi
+  # Search upward from current directory
+  while [[ "$current_dir" != "/" ]]; do
+    # Check if .venv exists at this level
+    if [[ -f "$current_dir/.venv/bin/activate" ]]; then
+      found_venv="$current_dir/.venv"
+      break
+    fi
 
-  # 3. Define the potential path to the activate script.
-  local venv_path="$repo_root/.venv/bin/activate"
+    # Stop if we've reached a .git directory
+    if [[ -d "$current_dir/.git" ]]; then
+      # Check one last time at the git root level
+      if [[ -f "$current_dir/.venv/bin/activate" ]]; then
+        found_venv="$current_dir/.venv"
+      fi
+      break
+    fi
 
-  # 4. Check if the activate script exists and source it.
-  if [[ -f "$venv_path" ]]; then
-    source "$venv_path"
-    echo "vup: Activated virtual environment at: $repo_root/.venv"
+    # Move up one directory
+    current_dir=$(dirname "$current_dir")
+  done
+
+  # Activate if found
+  if [[ -n "$found_venv" ]]; then
+    source "$found_venv/bin/activate"
+    echo "vup: Activated virtual environment at: $found_venv"
   else
-    echo "vup: No '.venv/bin/activate' found at the root of this git repository." >&2
+    echo "vup: No '.venv/bin/activate' found before reaching .git or filesystem root." >&2
     return 1
   fi
 }
@@ -668,5 +678,5 @@ export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
 
 export PATH=$PATH:$HOME/go/bin
 
-export PATH="$PATH:/usr/local/idea-IC-252.23892.409/bin"
+export PATH="$PATH:$HOME/idea-IC-252.23892.409/bin"
 
