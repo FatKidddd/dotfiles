@@ -947,14 +947,16 @@ require('lazy').setup({
 
   {
     'obsidian-nvim/obsidian.nvim',
-    version = '*', -- Use latest stable release
+    version = '*',
     ft = 'markdown',
+    dependencies = { 'nvim-lua/plenary.nvim', 'nvim-telescope/telescope.nvim' },
+
     opts = {
       legacy_commands = false,
       workspaces = {
         {
           name = 'notes',
-          path = notes_path, -- This path is used by the new search feature
+          path = notes_path,
         },
       },
       notes_subdir = 'general',
@@ -970,21 +972,11 @@ require('lazy').setup({
         folder = '.obsidian/templates',
         date_format = '%Y-%m-%d',
         time_format = '%H:%M',
-        default_template = 'learning_note.md',
-        substitutions = {
-          ['topic'] = function()
-            local current_dir = vim.fn.expand '%:p:h'
-            local notes_root = vim.fn.expand .. notes_path
-            local relative_path = current_dir:gsub(vim.pesc(notes_root), '')
-            local topic = relative_path:match '^/([^/]+)'
-            return topic or 'general'
-          end,
-        },
       },
 
       note_id_func = function(title)
         local suffix = ''
-        if title ~= nil then
+        if title and title ~= '' then
           suffix = title:gsub(' ', '-'):gsub('[^A-Za-z0-9-]', ''):lower()
         else
           for _ = 1, 4 do
@@ -996,91 +988,57 @@ require('lazy').setup({
 
       frontmatter = {
         func = function(note)
-          -- Add the note's title as an alias if it exists.
           if note.title then
             note:add_alias(note.title)
           end
-          -- Return the final frontmatter table.
           return {
             id = note.id,
-            status = 'captured', -- New: Default status for learning notes.
-            priority = 'medium', -- New: Default priority for learning notes.
+            status = 'captured',
             aliases = note.aliases,
             tags = note.tags or {},
             created = os.date '%Y-%m-%d %H:%M',
           }
         end,
-        -- NEW: Defines the order of keys in the generated frontmatter.
-        sort = { 'id', 'status', 'priority', 'aliases', 'tags', 'created' },
+        sort = { 'id', 'status', 'aliases', 'tags', 'created' },
       },
 
       preferred_link_style = 'markdown',
-      sort_by = 'modified',
-      sort_reversed = true,
-      search_max_lines = 2000,
-      completion = {
-        nvim_cmp = true,
-        min_chars = 2,
-      },
+      completion = { nvim_cmp = true, min_chars = 2 },
     },
 
     keys = {
-      -- Your existing mappings
-      -- { '<leader>oth', '<cmd>Obsidian toggle_checkbox<cr>', desc = 'Obsidian: Toggle checkbox' },
-      { '<leader>oe', '<cmd>Obsidian new<cr>', desc = 'Obsidian: New note' },
-
-      -- so that i can use the default template quickly
+      -- Standard useful mappings
       {
         '<leader>on',
         function()
-          -- We need to get the vault path from the loaded obsidian config.
-          -- This makes the keymap robust even if you change the path later.
-
-          -- Use vim.fn.input(), which supports completion.
-          local note_path = vim.fn.input {
-            prompt = 'New Note Path/Title: ',
-            -- This is the magic part: enable file and directory completion.
-            completion = 'file',
-            -- Start the completion from the root of the vault.
-            cwd = notes_path,
-          }
-
-          -- If the user provided a path (and didn't cancel with Esc), create the note.
+          local note_path = vim.fn.input { prompt = 'New note path/title: ', completion = 'file', cwd = notes_path }
           if note_path and note_path ~= '' then
             vim.cmd('Obsidian new_from_template ' .. note_path .. ' learning_note')
           end
         end,
-        desc = 'Obsidian: New note (w/ path completion)',
+        desc = 'Obsidian: New note (from template)',
       },
-
+      { '<leader>oe', '<cmd>Obsidian new<cr>', desc = 'Obsidian: New note (w/o template)' },
       { '<leader>of', '<cmd>Obsidian search<cr>', desc = 'Obsidian: Find note' },
-      -- { '<leader>oq', '<cmd>Obsidian quick_switch<cr>', desc = 'Obsidian: Quick switch' },
       { '<leader>ot', '<cmd>Obsidian today<cr>', desc = "Obsidian: Today's note" },
-      { '<leader>ob', '<cmd>Obsidian backlinks<cr>', desc = 'Obsidian: Show backlinks' },
-      { 'gf', '<cmd>Obsidian follow_link<cr>', desc = 'Obsidian: Follow link' },
-      { '<leader>on', '<cmd>Obsidian link_new<cr>', mode = 'v', desc = 'Obsidian: New note from selection' },
-      { '<leader>oo', '<cmd>Obsidian open<cr>', desc = 'Obsidian: Open in app' },
-      -- { '<leader>oe', '<cmd>Obsidian extract_note<cr>', mode = 'v', desc = 'Obsidian: Extract to new note' },
-      { '<leader>ol', '<cmd>Obsidian insert_link<cr>', mode = 'v', desc = 'Obsidian: Insert link' },
-      { '<leader>og', '<cmd>Obsidian tags<cr>', desc = 'Obsidian: Find by tags' },
       { '<leader>or', '<cmd>Obsidian rename<cr>', desc = 'Obsidian: Rename note' },
+      { 'gf', '<cmd>Obsidian follow_link<cr>', desc = 'Obsidian: Follow link' },
+      -- { '<leader>on', '<cmd>Obsidian link_new<cr>', mode = 'v', desc = 'Obsidian: New note from selection' },
+      -- { '<leader>oe', '<cmd>Obsidian extract_note<cr>', mode = 'v', desc = 'Obsidian: Extract to new note' },
+      -- { '<leader>ol', '<cmd>Obsidian insert_link<cr>', mode = 'v', desc = 'Obsidian: Insert link' },
+      -- { '<leader>og', '<cmd>Obsidian tags<cr>', desc = 'Obsidian: Find by tags' },
       -- { '<leader>oT', '<cmd>Obsidian template<cr>', desc = 'Obsidian: Insert template' },
 
-      -- NEW: Keymaps for the learning workflow.
+      -- Custom mappings for better workflow
       { '<leader>oL', '<cmd>ObsidianLevelUp<cr>', desc = 'Obsidian: [L]evel-Up Status' },
-      { '<leader>op', '<cmd>ObsidianCyclePriority<cr>', desc = 'Obsidian: Cycle [P]riority' },
-      { '<leader>oV', '<cmd>ObsidianCopyTestPrompt<cr>', desc = 'Obsidian: Copy [V]alidation Prompt' },
-      { '<leader>oc', '<cmd>ObsidianCopyConnectionPrompt<cr>', desc = 'Obsidian: Copy [C]onnection Prompt' },
       { '<leader>os', '<cmd>ObsidianSearchLearned<cr>', desc = 'Obsidian: [S]earch Learned Notes' },
+      { '<leader>oV', '<cmd>ObsidianCopyValidationPrompt<cr>', desc = 'Obsidian: [V]alidate Explanation' },
     },
 
-    -- NEW: The config function runs after the plugin loads.
-    -- We define our custom commands and logic here.
     config = function(_, opts)
-      -- This is crucial to properly initialize the plugin
       require('obsidian').setup(opts)
 
-      -- Helper function to update a frontmatter key by cycling through a list of values
+      -- We only have two statuses now.
       local function update_frontmatter(key, values)
         local bufnr = vim.api.nvim_get_current_buf()
         local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
@@ -1091,16 +1049,18 @@ require('lazy').setup({
               if val == current_value then
                 local next_value = values[(j % #values) + 1]
                 vim.api.nvim_buf_set_lines(bufnr, i - 1, i, false, { key .. ': ' .. next_value })
-                vim.notify("Updated '" .. key .. "' to '" .. next_value .. "'")
+                vim.notify('Status -> ' .. next_value:upper())
                 return
               end
             end
           end
         end
-        vim.notify("Error: Could not find key '" .. key .. "' in frontmatter.", vim.log.levels.ERROR)
       end
 
-      -- Helper function to get the text content under a specific markdown heading
+      local function level_up_status()
+        update_frontmatter('status', { 'captured', 'processed' })
+      end
+
       local function get_section_content(section_title)
         local lines = vim.api.nvim_buf_get_lines(vim.api.nvim_get_current_buf(), 0, -1, false)
         local content, capturing = {}, false
@@ -1108,7 +1068,7 @@ require('lazy').setup({
           if line:find('## ' .. section_title, 1, true) then
             capturing = true
           elseif capturing and (line:find('## ', 1, true) or line:find('---', 1, true)) then
-            break -- Stop at the next section or the final separator
+            break
           elseif capturing and vim.trim(line) ~= '' then
             table.insert(content, line)
           end
@@ -1116,18 +1076,9 @@ require('lazy').setup({
         return table.concat(content, '\n')
       end
 
-      -- Workflow Functions
-      local function level_up_status()
-        update_frontmatter('status', { 'dumped', 'explained', 'connected', 'internalised' })
-      end
-
-      local function cycle_priority()
-        update_frontmatter('priority', { 'low', 'medium', 'high' })
-      end
-
-      local function copy_test_prompt()
+      local function copy_validation_prompt()
         local title = vim.fn.fnamemodify(vim.fn.expand '%', ':t:r'):gsub('^%d+%-', ''):gsub('-', ' ')
-        local explanation = get_section_content "How I'd Explain This Simply"
+        local explanation = get_section_content 'Explain This Simply'
         if vim.trim(explanation) == '' then
           return vim.notify('Explanation section is empty!', vim.log.levels.WARN)
         end
@@ -1140,30 +1091,18 @@ require('lazy').setup({
         vim.notify '✅ Validation prompt copied to clipboard.'
       end
 
-      local function copy_connection_prompt()
-        local title = vim.fn.fnamemodify(vim.fn.expand '%', ':t:r'):gsub('^%d+%-', ''):gsub('-', ' ')
-        local prompt = string.format(
-          "CONNECTION PROMPT:\n\nI am studying the concept of '%s'. What are the most important related concepts I should know? How does it compare and contrast with them, and what are the primary trade-offs?",
-          title
-        )
-        vim.fn.setreg('+', prompt)
-        vim.notify '✅ Connection prompt copied to clipboard.'
-      end
-
+      -- Search looks for the new 'processed' status.
       local function search_learned_notes()
-        local vault_path = opts.workspaces[1].path
         require('telescope.builtin').live_grep {
-          prompt_title = 'Search Learned Notes',
-          search_dirs = { vault_path },
-          additional_args = { '--glob', '*.md', '-e', 'status: explained', '-e', 'status: connected', '-e', 'status: internalised' },
+          prompt_title = 'Search Processed Notes',
+          search_dirs = { opts.workspaces[1].path },
+          additional_args = { '--glob', '*.md', '-e', 'status: processed' },
         }
       end
 
-      -- Create user commands that can be called from the `keys` table or command line
+      -- Create the minimal set of user commands.
       vim.api.nvim_create_user_command('ObsidianLevelUp', level_up_status, {})
-      vim.api.nvim_create_user_command('ObsidianCyclePriority', cycle_priority, {})
-      vim.api.nvim_create_user_command('ObsidianCopyTestPrompt', copy_test_prompt, {})
-      vim.api.nvim_create_user_command('ObsidianCopyConnectionPrompt', copy_connection_prompt, {})
+      vim.api.nvim_create_user_command('ObsidianCopyValidationPrompt', copy_validation_prompt, {})
       vim.api.nvim_create_user_command('ObsidianSearchLearned', search_learned_notes, {})
     end,
   },
