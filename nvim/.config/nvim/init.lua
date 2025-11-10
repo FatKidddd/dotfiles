@@ -1282,6 +1282,11 @@ require('lazy').setup({
     priority = 1000, -- Very high priority is required, luarocks.nvim should run as the first plugin in your config.
     config = true,
   },
+
+  { 'sindrets/diffview.nvim' },
+
+  { 'mbbill/undotree' },
+
   require 'kickstart.plugins.lint',
   require 'kickstart.plugins.autopairs',
   require 'kickstart.plugins.neo-tree',
