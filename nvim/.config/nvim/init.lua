@@ -463,6 +463,18 @@ require('lazy').setup({
         },
         pyright = {},
         -- pyrefly = {},
+        solidity_ls = {
+          cmd = { 'vscode-solidity-server', '--stdio' },
+          filetypes = { 'solidity' },
+          root_dir = require('lspconfig').util.root_pattern('hardhat.config.js', 'foundry.toml', '.git'),
+          settings = {
+            solidity = {
+              compileUsingRemoteVersion = 'latest',
+              defaultCompiler = 'remote',
+              enabledAsYouTypeCompilationErrorCheck = true,
+            },
+          },
+        },
       }
 
       local ensure_installed_tools = vim.tbl_keys(servers or {})
@@ -569,7 +581,67 @@ require('lazy').setup({
     end,
   },
 
-  { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
+  {
+    'folke/todo-comments.nvim',
+    dependencies = { 'nvim-lua/plenary.nvim' },
+    event = 'VimEnter',
+    opts = {
+      signs = true,
+      sign_priority = 8,
+      keywords = {
+        FIX = { icon = ' ', color = 'error', alt = { 'FIXME', 'BUG', 'ISSUE', 'FIXIT' } },
+        WARN = { icon = ' ', color = 'warning', alt = { 'WARNING' } },
+        NOTE = { icon = '󰎞 ', color = 'hint', alt = { 'INFO' } },
+        TODO = { icon = ' ', color = 'info' },
+        PERF = { icon = ' ', color = 'perf', alt = { 'OPTIMIZE' } },
+        -- WHAT:
+        WHAT = { icon = ' ', color = 'what', alt = { 'desc', 'why' } },
+        -- FLOW:
+        FLOW = { icon = 'ﰠ ', color = 'flow' },
+        WHO = { icon = ' ', color = 'who', alt = { 'actor' } },
+        STATE = { icon = ' ', color = 'state' },
+        INV = { icon = ' ', color = 'invariant', alt = { 'invariant' } },
+        IF = { icon = ' ', color = 'if_cond', alt = { 'assume', 'whatif' } },
+        RISK = { icon = ' ', color = 'risk' },
+        IDEA = { icon = '💡', color = 'idea' },
+      },
+      merge_keywords = true,
+      highlight = {
+        pattern = [[.*<(KEYWORDS)\s*:]],
+        comments_only = true,
+        before = '',
+        keyword = 'wide',
+        after = 'fg',
+        multiline = true,
+      },
+      colors = {
+        error = { 'DiagnosticError', 'ErrorMsg', '#E06C75' },
+        warning = { 'DiagnosticWarn', 'WarningMsg', '#E5C07B' },
+        info = { 'DiagnosticInfo', '#61AFEF' },
+        hint = { 'DiagnosticHint', '#56B6C2' },
+        perf = { 'DiagnosticHint', '#98C379' },
+        what = { '#61AFEF' },
+        flow = { '#56B6C2' },
+        who = { '#C678DD' },
+        state = { '#D19A66' },
+        invariant = { '#E5C07B' },
+        if_cond = { '#C678DD' },
+        risk = { '#E06C75' },
+        idea = { '#98C379' },
+      },
+      search = {
+        command = 'rg',
+        args = {
+          '--color=never',
+          '--no-heading',
+          '--with-filename',
+          '--line-number',
+          '--column',
+        },
+        pattern = [[\b(KEYWORDS):]],
+      },
+    },
+  },
 
   {
     'echasnovski/mini.nvim',
