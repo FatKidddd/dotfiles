@@ -195,13 +195,99 @@ vim.api.nvim_create_autocmd('FileType', {
   end,
 })
 
--- Git commit message formatting for CS2103T
+-- Smart comment alignment for Solidity files so that i don't waste having to indent comments
+local function handle_smart_comment(mode)
+  local line = vim.api.nvim_get_current_line()
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local row, col = cursor[1], cursor[2]
+
+  -- Supported markers
+  local patterns = { '//', '#', '/%*' }
+  local first_pos, marker
+  for _, p in ipairs(patterns) do
+    local s, e = line:find(p)
+    if s and (not first_pos or s < first_pos) then
+      first_pos, marker = s, line:sub(s, e)
+    end
+  end
+
+  -- Fallback if no comment found on line
+  if not first_pos then
+    local keys = { o = 'o', S = 'S', cr = '<CR>' }
+    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(keys[mode], true, false, true), 'n', false)
+    return
+  end
+
+  vim.schedule(function()
+    local padding = string.rep(' ', first_pos - 1)
+
+    if mode == 'S' then
+      local content = padding .. marker .. ' '
+      vim.api.nvim_set_current_line(content)
+      vim.api.nvim_win_set_cursor(0, { row, #content })
+      vim.cmd 'startinsert!'
+      return
+    end
+
+    if mode == 'o' then
+      local content = padding .. marker .. ' '
+      vim.api.nvim_buf_set_lines(0, row, row, false, { content })
+      vim.api.nvim_win_set_cursor(0, { row + 1, #content })
+      vim.cmd 'startinsert!'
+      return
+    end
+
+    if mode == 'cr' then
+      -- If cursor is to the left of the very first comment, do standard Enter
+      if col < (first_pos - 1) then
+        vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('<CR>', true, false, true), 'n', false)
+        return
+      end
+
+      local before = line:sub(1, col):gsub('%s*$', '')
+      local after = line:sub(col + 1):gsub('^%s*', '')
+      local new_line_content
+
+      if after == '' then
+        -- Cursor at end of line: just add new aligned comment
+        new_line_content = padding .. marker .. ' '
+      else
+        -- Check if 'after' already starts with a comment marker
+        local starts_with_marker = false
+        for _, p in ipairs(patterns) do
+          if after:find('^' .. p) then
+            starts_with_marker = true
+            break
+          end
+        end
+
+        if starts_with_marker then
+          new_line_content = padding .. after
+        else
+          new_line_content = padding .. marker .. ' ' .. after
+        end
+      end
+
+      vim.api.nvim_buf_set_lines(0, row - 1, row, false, { before, new_line_content })
+      vim.api.nvim_win_set_cursor(0, { row + 1, #padding + #marker + 1 })
+      vim.cmd 'startinsert!'
+    end
+  end)
+end
+
 vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'gitcommit',
+  pattern = 'solidity',
   callback = function()
-    vim.opt_local.textwidth = 72
-    vim.opt_local.colorcolumn = '51,73' -- Shows guidelines at 50 and 72 chars
-    vim.opt_local.spell = true
+    local opts = { buffer = true, silent = true }
+    vim.keymap.set('n', 'o', function()
+      handle_smart_comment 'o'
+    end, opts)
+    vim.keymap.set('n', 'S', function()
+      handle_smart_comment 'S'
+    end, opts)
+    vim.keymap.set('i', '<CR>', function()
+      handle_smart_comment 'cr'
+    end, opts)
   end,
 })
 
@@ -565,16 +651,23 @@ require('lazy').setup({
     -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
     -- 'folke/tokyonight.nvim',
     -- 'rebelot/kanagawa.nvim',
-    'EdenEast/nightfox.nvim',
+    -- 'EdenEast/nightfox.nvim',
+    -- 'ellisonleao/gruvbox.nvim',
     -- 'catppuccin/nvim',
     -- 'rose-pine/neovim',
+    -- 'sainnhe/gruvbox-material',
+    'neanias/everforest-nvim',
     priority = 1000, -- Make sure to load this before all the other start plugins.
     init = function()
       -- vim.cmd.colorscheme 'tokyonight-night'
       -- vim.cmd.colorscheme 'kanagawa'
-      vim.cmd.colorscheme 'carbonfox'
+      -- vim.cmd.colorscheme 'kanagawa-dragon'
+      -- vim.cmd.colorscheme 'carbonfox'
+      -- vim.cmd.colorscheme 'gruvbox'
       -- vim.cmd.colorscheme 'catppuccin-mocha'
       -- vim.cmd.colorscheme 'rose-pine-main'
+      -- vim.cmd.colorscheme 'gruvbox-material'
+      vim.cmd.colorscheme 'everforest'
 
       -- You can configure highlights by doing something like:
       vim.cmd.hi 'Comment gui=none'
@@ -594,16 +687,27 @@ require('lazy').setup({
         NOTE = { icon = '󰎞 ', color = 'hint', alt = { 'INFO' } },
         TODO = { icon = ' ', color = 'info' },
         PERF = { icon = ' ', color = 'perf', alt = { 'OPTIMIZE' } },
-        -- WHAT:
-        WHAT = { icon = ' ', color = 'what', alt = { 'desc', 'why' } },
-        -- FLOW:
-        FLOW = { icon = 'ﰠ ', color = 'flow' },
-        WHO = { icon = ' ', color = 'who', alt = { 'actor' } },
-        STATE = { icon = ' ', color = 'state' },
-        INV = { icon = ' ', color = 'invariant', alt = { 'invariant' } },
+
+        -- custom comments to understand a codebase
+        -- WHAT: describes at a high-level what a piece of code is supposed to do
+        -- Q: quick question / notes etc
+        -- WHO: describes actors for a function, who can call it, who owns it, etc
+        -- STATE: describes possible state changes or important state information
+        -- INV: describes invariants that should always hold true
+        -- IF: describes the questions I have, assumptions, edges cases
+        -- D: describes the potential exploit
+        -- IDEA: describes the exploit and/or solution
+        -- C: checked
+        N = { icon = ' ', color = 'note', alt = { 'NOTE', 'INFO' } },
+        W = { icon = ' ', color = 'what', alt = { 'WHAT' } },
+        A = { icon = ' ', color = 'who', alt = { 'WHO', 'ACTORS' } },
+        Q = { icon = 'ﰠ ', color = 'question', alt = { 'QUESTION' } },
         IF = { icon = ' ', color = 'if_cond', alt = { 'assume', 'whatif' } },
-        RISK = { icon = ' ', color = 'risk' },
-        IDEA = { icon = '💡', color = 'idea' },
+        S = { icon = ' ', color = 'state', alt = { 'STATE' } },
+        M = { icon = ' ', color = 'invariant', alt = { 'INV' } },
+        D = { icon = ' ', color = 'risk', alt = { 'RISK', 'DANGER' } },
+        IDEA = { icon = '🧠', color = 'idea', alt = { 'SOLUTION', 'SOL' } },
+        C = { icon = ' ', color = 'checked', alt = { 'CHECKED', 'DONE' } },
       },
       merge_keywords = true,
       highlight = {
@@ -620,14 +724,16 @@ require('lazy').setup({
         info = { 'DiagnosticInfo', '#61AFEF' },
         hint = { 'DiagnosticHint', '#56B6C2' },
         perf = { 'DiagnosticHint', '#98C379' },
-        what = { '#61AFEF' },
-        flow = { '#56B6C2' },
-        who = { '#C678DD' },
-        state = { '#D19A66' },
-        invariant = { '#E5C07B' },
-        if_cond = { '#C678DD' },
-        risk = { '#E06C75' },
-        idea = { '#98C379' },
+        note = { '#ABB2BF' }, -- light gray (general notes)
+        what = { '#61AFEF' }, -- blue (high-level description)
+        who = { '#C678DD' }, -- purple (actors/ownership)
+        question = { '#56B6C2' }, -- cyan (data/control flow)
+        if_cond = { '#D19A66' }, -- orange (questions/assumptions)
+        state = { '#E5C07B' }, -- yellow (state changes - important)
+        invariant = { '#BE5046' }, -- dark red (invariants - must hold)
+        risk = { '#E06C75' }, -- red (exploits - danger)
+        idea = { '#98C379' }, -- green (solutions - positive)
+        checked = { '#4CAF50' }, -- darker green (checked off)
       },
       search = {
         command = 'rg',
