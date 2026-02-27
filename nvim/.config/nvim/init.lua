@@ -1465,6 +1465,29 @@ require('lazy').setup({
 
   { 'mbbill/undotree' },
 
+  {
+    'stevearc/aerial.nvim',
+    opts = {},
+    -- Optional dependencies
+    dependencies = {
+      'nvim-treesitter/nvim-treesitter',
+      'nvim-tree/nvim-web-devicons',
+    },
+    config = function(_, opts)
+      require('aerial').setup(opts)
+      vim.keymap.set('n', '{', '<cmd>AerialPrev<CR>', { desc = 'Aerial: Previous Symbol' })
+      vim.keymap.set('n', '}', '<cmd>AerialNext<CR>', { desc = 'Aerial: Next Symbol' })
+      vim.keymap.set('n', '<leader>a', '<cmd>AerialToggle!<CR>', { desc = 'Aerial: Toggle Aerial' })
+    end,
+  },
+
+  {
+    'folke/zen-mode.nvim',
+    keys = {
+      { '<leader>z', '<cmd>ZenMode<cr>', desc = 'Zen Mode' },
+    },
+  },
+
   require 'kickstart.plugins.lint',
   require 'kickstart.plugins.autopairs',
   require 'kickstart.plugins.neo-tree',
