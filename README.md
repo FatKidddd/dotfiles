@@ -59,12 +59,6 @@ cd ~/dotfiles && stow zsh   # re-stow to pick up new files
 | `nvim/` | `~/.config/nvim/` |
 | `tmux/` | `~/.tmux.conf` |
 | `bash/` | `~/.bashrc`, `~/.profile` |
-| `takopi/` | `~/.takopi/` (Telegram Claude bot) |
-
-## Takopi setup
-
-After install, fill in `~/.takopi/takopi.toml` (created from template by `install.zsh`).
-Get `bot_token` from @BotFather, `chat_id` via `takopi chat-id`.
 
 ```bash
 cd ~/path/to/repo && takopi init myproject

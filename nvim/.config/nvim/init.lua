@@ -650,24 +650,24 @@ require('lazy').setup({
   {
     -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
     -- 'folke/tokyonight.nvim',
-    -- 'rebelot/kanagawa.nvim',
+    'rebelot/kanagawa.nvim',
     -- 'EdenEast/nightfox.nvim',
     -- 'ellisonleao/gruvbox.nvim',
     -- 'catppuccin/nvim',
     -- 'rose-pine/neovim',
     -- 'sainnhe/gruvbox-material',
-    'neanias/everforest-nvim',
+    -- 'neanias/everforest-nvim',
     priority = 1000, -- Make sure to load this before all the other start plugins.
     init = function()
       -- vim.cmd.colorscheme 'tokyonight-night'
       -- vim.cmd.colorscheme 'kanagawa'
-      -- vim.cmd.colorscheme 'kanagawa-dragon'
+      vim.cmd.colorscheme 'kanagawa-dragon'
       -- vim.cmd.colorscheme 'carbonfox'
       -- vim.cmd.colorscheme 'gruvbox'
       -- vim.cmd.colorscheme 'catppuccin-mocha'
       -- vim.cmd.colorscheme 'rose-pine-main'
       -- vim.cmd.colorscheme 'gruvbox-material'
-      vim.cmd.colorscheme 'everforest'
+      -- vim.cmd.colorscheme 'everforest'
 
       -- You can configure highlights by doing something like:
       vim.cmd.hi 'Comment gui=none'
