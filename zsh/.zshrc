@@ -8,24 +8,24 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
 fi
 
 # ============================================================
-# PATH
+# PATH — retain precedence without accumulating duplicates on reload
 # ============================================================
-export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
-export PATH="$PATH:$HOME/.nvim/bin"
-export PATH="$PATH:$HOME/.foundry/bin"
-export PATH="$HOME/vcpkg:$PATH"
-export PATH=/home/justin/.opencode/bin:$PATH
-export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-export PATH=$PATH:$HOME/go/bin
-export PATH="$PATH:$HOME/idea-IC-252.23892.409/bin"
-export PATH="$PATH:$HOME/aseprite/build/bin"
-
-VOLTA_FEATURE_PNPM=1
+typeset -U path PATH
+export VOLTA_FEATURE_PNPM=1
 export VOLTA_HOME="$HOME/.volta"
-export PATH="$VOLTA_HOME/bin:$PATH"
-
 export PYENV_ROOT="$HOME/.pyenv"
-[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+path=(
+  "$VOLTA_HOME/bin"
+  "$HOME/.local/share/solana/install/active_release/bin"
+  "$HOME/.opencode/bin"
+  "$HOME/vcpkg"
+  "$HOME/bin" "$HOME/.local/bin" /usr/local/bin
+  $path
+  "$HOME/.nvim/bin" "$HOME/.foundry/bin" "$HOME/go/bin"
+  "$HOME/idea-IC-252.23892.409/bin" "$HOME/aseprite/build/bin"
+)
+[[ -d "$PYENV_ROOT/bin" ]] && path=("$PYENV_ROOT/bin" $path)
+export PATH
 
 # ============================================================
 # OH MY ZSH
@@ -68,7 +68,12 @@ alias tconf="nvim ~/dotfiles/tmux/.tmux.conf"
 alias notes="cd ~/Desktop/Notes && nvim"
 alias nus="cd ~/Desktop/NUS/2526S1"
 
-alias poet="source \$(poetry env info --path)/bin/activate"
+unalias poet 2>/dev/null
+function poet() {
+  local env_path
+  env_path=$(poetry env info --path) || return
+  source "$env_path/bin/activate"
+}
 alias upev="sudo apt update -y && sudo apt full-upgrade -y && sudo apt autoremove -y && sudo apt clean -y && sudo apt autoclean -y"
 
 alias ls="eza -ah --color=auto --group-directories-first --icons"
@@ -92,12 +97,16 @@ alias inspect-sol="$HOME/projects/sec/helpers/sol/inspect-contract"
 # ============================================================
 # TOOLS
 # ============================================================
-eval "$(pyenv init -)"
+if command -v pyenv >/dev/null 2>&1; then eval "$(pyenv init -)"; fi
 
-. "$HOME/.cargo/env"
+[[ -r "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
 
-export CPLUS_INCLUDE_PATH="/usr/include/c++/13:/usr/include/x86_64-linux-gnu/c++/13"
-export CPLUS_INCLUDE_PATH="$CPLUS_INCLUDE_PATH:$HOME/CP/ac-library"
+# Build tools use GCC 14 by default. Projects still own their language standard.
+export CC="gcc-14"
+export CXX="g++-14"
+
+# Never force one compiler's standard-library headers onto another compiler.
+unset CPLUS_INCLUDE_PATH C_INCLUDE_PATH CPATH
 
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
@@ -107,21 +116,23 @@ export CPLUS_INCLUDE_PATH="$CPLUS_INCLUDE_PATH:$HOME/CP/ac-library"
 
 # Searches upward for a Python .venv, stopping at .git
 function vup() {
-  local current_dir="$PWD" found_venv=""
-  while [[ "$current_dir" != "/" ]]; do
-    [[ -f "$current_dir/.venv/bin/activate" ]] && { found_venv="$current_dir/.venv"; break; }
-    if [[ -d "$current_dir/.git" ]]; then
-      [[ -f "$current_dir/.venv/bin/activate" ]] && found_venv="$current_dir/.venv"
-      break
+  local current_dir="$PWD"
+  while true; do
+    if [[ -r "$current_dir/.venv/bin/activate" ]]; then
+      source "$current_dir/.venv/bin/activate" || return
+      print -r -- "vup: activated $current_dir/.venv"
+      return 0
     fi
-    current_dir=$(dirname "$current_dir")
+    # Git worktrees have a .git file rather than a directory.
+    [[ -e "$current_dir/.git" || "$current_dir" == / ]] && break
+    current_dir=${current_dir:h}
   done
-  if [[ -n "$found_venv" ]]; then echo "vup: activated $found_venv"
-  else echo "vup: no .venv found" >&2; return 1; fi
+  print -u2 -- 'vup: no .venv found'
+  return 1
 }
 
 # Source .zshrc.d/ — modular functions (llm, llm_apply, etc.)
-for _f in ~/.zshrc.d/*.zsh; do [[ -f "$_f" ]] && source "$_f"; done
+for _f in ~/.zshrc.d/*.zsh(N); do [[ -f "$_f" ]] && source "$_f"; done
 unset _f
 
 # ============================================================
