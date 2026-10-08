@@ -80,7 +80,7 @@ check_tools() {
       else printf 'MISSING %s (config can be linked before installing it)\n' "$tool"; missing=1; fi
     fi
   done
-  for tool in uv fzf zoxide eza convert identify; do
+  for tool in uv fnm fzf zoxide eza convert identify; do
     command -v "$tool" >/dev/null 2>&1 || printf 'OPTIONAL %s\n' "$tool"
   done
   if has_package nvim && command -v nvim >/dev/null 2>&1; then

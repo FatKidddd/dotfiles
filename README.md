@@ -136,7 +136,7 @@ export CONDA_ROOT="$HOME/miniconda3"
 export CXX=clang++
 ```
 
-Zsh tolerates missing Oh My Zsh, eza, Cargo, NVM, SDKMAN and Conda.
+Zsh tolerates missing Oh My Zsh, eza, Cargo, fnm, SDKMAN and Conda.
 Clipboard aliases use Wayland/X11 tools when available and retain macOS native
 `pbcopy`/`pbpaste`. GCC 14 is preferred only when installed; CP otherwise uses
 `g++` or your `$CXX`. Do not carry machine-specific standard-library include
@@ -200,12 +200,31 @@ and Gruvbox Material theme.
 Existing regular Git/Ghostty files need `--backup` once when converting them to
 Stow links. Reload Ghostty or open a new window after changing its config.
 
-## Node manager choice
+## Node: fnm
 
-Your current NVM/Volta setup is preserved pending a migration decision.
-[Volta is unmaintained](https://github.com/volta-cli/volta) and its maintainers
-recommend [mise](https://mise.jdx.dev/lang/node.html). For your preference for
-separate tools, use [fnm](https://github.com/Schniz/fnm) for Node version switching
-and uv for Python. fnm supports `.node-version` and `.nvmrc` files and automatic
-version switching in Zsh.
-Before changing managers, inventory global CLI tools and project version files.
+fnm is the only Node manager initialized by Zsh. It switches versions on directory
+changes, searching parent directories for `.node-version` or `.nvmrc`.
+A missing fnm installation does not prevent the shell from starting.
+
+On Linux, install using the [official fnm installer](https://github.com/Schniz/fnm):
+
+```sh
+curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell
+```
+
+On macOS, use `brew install fnm`. Shell initialization is already in `.zshrc`;
+avoid adding the installer's duplicate startup block. Then open a new shell:
+
+```sh
+fnm install --lts
+fnm default lts-latest
+node --version
+# Pin a project's version:
+node --version > .node-version
+```
+
+This machine was migrated with Node 24.10.0 to preserve its existing runtime and
+global tools. Volta and NVM are uninstalled, with their previous directories saved
+in a dated backup for recovery. Global npm packages belong to individual Node
+installations, so install CLI tools for a new Node version as needed. Python
+remains managed by uv.

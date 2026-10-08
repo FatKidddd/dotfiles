@@ -11,13 +11,7 @@ fi
 # PATH — retain precedence without accumulating duplicates on reload
 # ============================================================
 typeset -U path PATH
-# uv owns Python versions; remove inherited pyenv shim paths too.
-path=( ${path:#$HOME/.pyenv/shims} )
-path=( ${path:#$HOME/.pyenv/bin} )
-export VOLTA_FEATURE_PNPM=1
-export VOLTA_HOME="$HOME/.volta"
 path=(
-  "$VOLTA_HOME/bin"
   "$HOME/.local/share/solana/install/active_release/bin"
   "$HOME/.opencode/bin"
   "$HOME/vcpkg"
@@ -43,11 +37,10 @@ zstyle ':omz:update' mode auto
 ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern cursor root line)
 ZSH_HIGHLIGHT_PATTERNS=('rm -rf *' 'fg=white,bold,bg=red')
 
-
 # Optional integrations should not break the shell on a fresh machine.
 [[ -r "$ZSH/custom/themes/powerlevel10k/powerlevel10k.zsh-theme" ]] || ZSH_THEME=""
 plugins=(git extract command-not-found)
-for _tool in fzf volta zoxide; do
+for _tool in fzf zoxide; do
   command -v "$_tool" >/dev/null 2>&1 && plugins+=("$_tool")
 done
 for _plugin in zsh-autosuggestions zsh-syntax-highlighting; do
@@ -104,7 +97,7 @@ if command -v g++-14 >/dev/null 2>&1; then export CXX="${CXX:-g++-14}"; fi
 # Never force one compiler's standard-library headers onto another compiler.
 unset CPLUS_INCLUDE_PATH C_INCLUDE_PATH CPATH
 
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+[[ -r ~/.p10k.zsh ]] && source ~/.p10k.zsh
 
 # ============================================================
 # FUNCTIONS
@@ -135,10 +128,19 @@ function vup() {
 [[ -r ~/.zshrc.local ]] && source ~/.zshrc.local
 
 # ============================================================
-# RUNTIME INIT — must stay at bottom (sdkman requirement)
+# RUNTIME INTEGRATIONS
 # ============================================================
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+# Official Linux/macOS installer locations; package-manager installs use PATH.
+for _fnm_bin in "${XDG_DATA_HOME:-$HOME/.local/share}/fnm" "$HOME/Library/Application Support/fnm"; do
+  if [[ -x "$_fnm_bin/fnm" ]]; then
+    path=("$_fnm_bin" $path)
+    break
+  fi
+done
+unset _fnm_bin
+if command -v fnm >/dev/null 2>&1; then
+  eval "$(fnm env --use-on-cd --version-file-strategy recursive --shell zsh)"
+fi
 
 export SDKMAN_DIR="$HOME/.sdkman"
 [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
