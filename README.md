@@ -71,7 +71,7 @@ an explanation. User/repository `.stowrc` files are rejected so hidden options
 (such as `--adopt`) cannot change the plan.
 
 `--backup` moves the existing roots of conflicting packages (including entire
-`.config/nvim` or `.zshrc.d` directories) into
+`.config/nvim` directories) into
 `~/.dotfiles-backup-YYYYMMDD-HHMMSS.XXXXXX/`. It preserves existing Stow-owned
 roots and never imports old config into this repository. If a second preflight
 fails, moved originals are restored. After linking begins, backups remain for
@@ -99,7 +99,6 @@ Each package mirrors paths relative to your home:
 | Source in this repo | Destination |
 | --- | --- |
 | `zsh/.zshrc` | `~/.zshrc` |
-| `zsh/.zshrc.d/` | `~/.zshrc.d/` |
 | `nvim/.config/nvim/` | `~/.config/nvim/` |
 | `tmux/.tmux.conf` | `~/.tmux.conf` |
 | `git/.gitconfig`, `git/.gitignore_global` | `~/.gitconfig`, `~/.gitignore_global` |
@@ -114,7 +113,7 @@ Keep the repo in place: moving/deleting it can break links. Unstow before moving
 it, then run the installer from its new location. Inspect a link with:
 
 ```sh
-ls -ld ~/.zshrc ~/.zshrc.d ~/.config/nvim ~/.tmux.conf
+ls -ld ~/.zshrc ~/.config/nvim ~/.tmux.conf
 readlink ~/.zshrc
 ```
 
@@ -158,8 +157,8 @@ Markdown image and note shortcuts.
 - Keep Ctrl+Space as tmux prefix; prefix+h/j/k/l navigate panes, prefix+R reloads.
 - Bare Ctrl+h/j/k/l and Shift+arrows reach applications.
 
-Next cleanup priorities: choose one Node manager and reconcile the legacy Bash package. Retire `llm.zsh` if the clipboard AI workflow is
-no longer used. These decisions are separate from safely installing symlinks.
+Next cleanup priorities: choose one Node manager and reconcile the legacy Bash package.
+These decisions are separate from safely installing symlinks.
 
 ## Tests
 

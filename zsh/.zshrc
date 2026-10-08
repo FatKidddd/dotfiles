@@ -70,8 +70,6 @@ if command -v nvim > /dev/null 2>&1; then alias vim='nvim'; fi
 alias conf="nvim ~/.zshrc"
 alias nconf="nvim ~/.config/nvim/init.lua"
 alias tconf="nvim ~/.tmux.conf"
-alias notes="cd ~/Desktop/Notes && nvim"
-alias nus="cd ~/Desktop/NUS/2526S1"
 
 alias upev="sudo apt update -y && sudo apt full-upgrade -y && sudo apt autoremove -y && sudo apt clean -y && sudo apt autoclean -y"
 
@@ -83,8 +81,6 @@ alias :q="exit"
 alias lg="lazygit"
 alias c="clear"
 
-alias cdde="cd ~/Desktop/"
-alias cddo="cd ~/Downloads/"
 alias gitzip="git archive HEAD -o \${PWD##*/}.zip"
 
 if command -v wl-copy >/dev/null 2>&1; then
@@ -94,10 +90,6 @@ elif command -v xsel >/dev/null 2>&1; then
   alias pbcopy='xsel --clipboard --input'
   alias pbpaste='xsel --clipboard --output'
 fi
-
-alias inspect-evm-errors="$HOME/projects/sec/helpers/evm/get-error-selectors.sh"
-alias inspect-evm="$HOME/projects/sec/helpers/evm/inspect-contract.sh"
-alias inspect-sol="$HOME/projects/sec/helpers/sol/inspect-contract"
 
 # ============================================================
 # TOOLS
@@ -134,10 +126,6 @@ function vup() {
   print -u2 -- 'vup: no .venv found'
   return 1
 }
-
-# Source .zshrc.d/ — modular functions (llm, llm_apply, etc.)
-for _f in ~/.zshrc.d/*.zsh(N); do [[ -f "$_f" ]] && source "$_f"; done
-unset _f
 
 # ============================================================
 # SECRETS — local only, never tracked by git

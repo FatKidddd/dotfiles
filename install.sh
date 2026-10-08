@@ -177,7 +177,7 @@ restore_backups() {
 }
 roots() {
   case $1 in
-    zsh) printf '%s\n' .zshrc .zshrc.d ;;
+    zsh) printf '%s\n' .zshrc ;;
     nvim) printf '%s\n' .config/nvim ;;
     tmux) printf '%s\n' .tmux.conf ;;
     git) printf '%s\n' .gitconfig .gitignore_global ;;
