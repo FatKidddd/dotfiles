@@ -1,0 +1,12 @@
+[user]
+	email = justinwongjianhui@gmail.com
+	name = Justin Wong
+[pull]
+	ff = only
+[core]
+	editor = nvim
+	excludesfile = ~/.gitignore_global
+
+# Machine-specific identity or overrides may be kept outside this repo.
+[include]
+	path = ~/.gitconfig.local

@@ -43,6 +43,14 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(zsh.resolve(), self.repo / "zsh/.zshrc")
         self.assertEqual((self.target / ".config/nvim/init.lua").resolve(),
                          self.repo / "nvim/.config/nvim/init.lua")
+        for relative, source in {
+            ".gitconfig": "git/.gitconfig",
+            ".gitignore_global": "git/.gitignore_global",
+            ".config/ghostty/config": "ghostty/.config/ghostty/config",
+        }.items():
+            self.assertEqual((self.target / relative).resolve(), self.repo / source)
+        local_git = self.target / ".gitconfig.local"
+        local_git.write_text("[user]\n    name = Local override\n")
         self.assertFalse((self.target / ".bashrc").exists())
         self.run_install(entry="install.zsh")
         unrelated = self.target / "keep.txt"
@@ -50,6 +58,9 @@ class InstallTests(unittest.TestCase):
         self.run_install("--unstow")
         self.assertFalse(zsh.exists())
         self.assertEqual(unrelated.read_text(), "keep")
+        self.assertTrue(local_git.exists())
+        self.assertFalse((self.target / ".gitconfig").exists())
+        self.assertFalse((self.target / ".config/ghostty/config").exists())
 
     def test_conflict_stops_all_packages_before_linking(self):
         existing = self.target / ".tmux.conf"
@@ -72,6 +83,25 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(len(backups), 1)
         self.assertEqual((backups[0] / ".zshrc").read_text(), "original config")
         self.assertEqual((self.repo / "zsh/.zshrc").read_bytes(), original_repo)
+
+    def test_git_ghostty_backup_preserves_existing_configs(self):
+        originals = {
+            ".gitconfig": "[user]\n    name = Previous user\n",
+            ".gitignore_global": "old-ignore\n",
+            ".config/ghostty/config": "font-size = 14\n",
+            ".config/ghostty/extra": "keep extra file\n",
+        }
+        for relative, content in originals.items():
+            path = self.target / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content)
+        self.run_install("--backup", "git", "ghostty")
+        backup, = self.target.glob(".dotfiles-backup-*")
+        for relative, content in originals.items():
+            self.assertEqual((backup / relative).read_text(), content)
+        config = (self.target / ".gitconfig").read_text()
+        self.assertIn("excludesfile = ~/.gitignore_global", config)
+        self.assertIn("path = ~/.gitconfig.local", config)
 
     def test_failed_backup_preflight_restores_moved_files(self):
         (self.target / ".zshrc").write_text("original")

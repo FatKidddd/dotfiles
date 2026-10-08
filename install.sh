@@ -12,8 +12,8 @@ packages=()
 
 usage() {
   cat <<'EOF'
-Usage: ./install.sh [options] [zsh nvim tmux bash]
-Default packages: zsh nvim tmux (Bash is opt-in).
+Usage: ./install.sh [options] [zsh nvim tmux git ghostty bash]
+Default packages: zsh nvim tmux git ghostty (Bash is opt-in).
 
   -n, --dry-run     Show changes; do not link, back up or clone anything
   --target DIR     Existing destination directory (default: your home)
@@ -43,9 +43,9 @@ while (($#)); do
   esac
   shift
 done
-((${#packages[@]})) || packages=(zsh nvim tmux)
+((${#packages[@]})) || packages=(zsh nvim tmux git ghostty)
 for package in "${packages[@]}"; do
-  case $package in zsh|nvim|tmux|bash) ;; *) fail "Unknown package: $package" ;; esac
+  case $package in zsh|nvim|tmux|git|ghostty|bash) ;; *) fail "Unknown package: $package" ;; esac
   [[ -d "$repo_dir/$package" ]] || fail "Missing package directory: $package"
 done
 [[ -d $target_dir ]] || fail "Target must exist: $target_dir (create it first)"
@@ -80,7 +80,7 @@ check_tools() {
       else printf 'MISSING %s (config can be linked before installing it)\n' "$tool"; missing=1; fi
     fi
   done
-  for tool in fzf zoxide eza convert identify; do
+  for tool in uv fzf zoxide eza convert identify; do
     command -v "$tool" >/dev/null 2>&1 || printf 'OPTIONAL %s\n' "$tool"
   done
   if has_package nvim && command -v nvim >/dev/null 2>&1; then
@@ -180,6 +180,8 @@ roots() {
     zsh) printf '%s\n' .zshrc .zshrc.d ;;
     nvim) printf '%s\n' .config/nvim ;;
     tmux) printf '%s\n' .tmux.conf ;;
+    git) printf '%s\n' .gitconfig .gitignore_global ;;
+    ghostty) printf '%s\n' .config/ghostty ;;
     bash) printf '%s\n' .bashrc .profile ;;
   esac
 }

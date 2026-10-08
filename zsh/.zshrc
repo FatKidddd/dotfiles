@@ -11,9 +11,11 @@ fi
 # PATH — retain precedence without accumulating duplicates on reload
 # ============================================================
 typeset -U path PATH
+# uv owns Python versions; remove inherited pyenv shim paths too.
+path=( ${path:#$HOME/.pyenv/shims} )
+path=( ${path:#$HOME/.pyenv/bin} )
 export VOLTA_FEATURE_PNPM=1
 export VOLTA_HOME="$HOME/.volta"
-export PYENV_ROOT="$HOME/.pyenv"
 path=(
   "$VOLTA_HOME/bin"
   "$HOME/.local/share/solana/install/active_release/bin"
@@ -24,7 +26,6 @@ path=(
   "$HOME/.nvim/bin" "$HOME/.foundry/bin" "$HOME/go/bin"
   "$HOME/idea-IC-252.23892.409/bin" "$HOME/aseprite/build/bin"
 )
-[[ -d "$PYENV_ROOT/bin" ]] && path=("$PYENV_ROOT/bin" $path)
 export PATH
 
 # ============================================================
@@ -46,7 +47,7 @@ ZSH_HIGHLIGHT_PATTERNS=('rm -rf *' 'fg=white,bold,bg=red')
 # Optional integrations should not break the shell on a fresh machine.
 [[ -r "$ZSH/custom/themes/powerlevel10k/powerlevel10k.zsh-theme" ]] || ZSH_THEME=""
 plugins=(git extract command-not-found)
-for _tool in fzf poetry volta zoxide; do
+for _tool in fzf volta zoxide; do
   command -v "$_tool" >/dev/null 2>&1 && plugins+=("$_tool")
 done
 for _plugin in zsh-autosuggestions zsh-syntax-highlighting; do
@@ -72,12 +73,6 @@ alias tconf="nvim ~/.tmux.conf"
 alias notes="cd ~/Desktop/Notes && nvim"
 alias nus="cd ~/Desktop/NUS/2526S1"
 
-unalias poet 2>/dev/null
-function poet() {
-  local env_path
-  env_path=$(poetry env info --path) || return
-  source "$env_path/bin/activate"
-}
 alias upev="sudo apt update -y && sudo apt full-upgrade -y && sudo apt autoremove -y && sudo apt clean -y && sudo apt autoclean -y"
 
 if command -v eza >/dev/null 2>&1; then
@@ -107,7 +102,6 @@ alias inspect-sol="$HOME/projects/sec/helpers/sol/inspect-contract"
 # ============================================================
 # TOOLS
 # ============================================================
-if command -v pyenv >/dev/null 2>&1; then eval "$(pyenv init -)"; fi
 
 [[ -r "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
 
@@ -161,13 +155,16 @@ export NVM_DIR="$HOME/.nvm"
 export SDKMAN_DIR="$HOME/.sdkman"
 [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
 
-# Initialize Conda only when installed; allow a machine-specific installation root.
-_conda_root=${CONDA_ROOT:-$HOME/anaconda3}
-if [[ -x "$_conda_root/bin/conda" ]]; then
-  if _conda_setup=$("$_conda_root/bin/conda" shell.zsh hook 2>/dev/null); then
-    eval "$_conda_setup"
-  elif [[ -r "$_conda_root/etc/profile.d/conda.sh" ]]; then
-    source "$_conda_root/etc/profile.d/conda.sh"
+# Conda is reserved for school; initialize it on first explicit invocation.
+function conda() {
+  local conda_root=${CONDA_ROOT:-$HOME/anaconda3}
+  if [[ ! -x "$conda_root/bin/conda" ]]; then
+    print -u2 -- "Conda is not installed at $conda_root; set CONDA_ROOT in ~/.zshrc.local"
+    return 127
   fi
-fi
-unset _conda_root _conda_setup
+  local conda_hook
+  conda_hook=$(CONDA_AUTO_ACTIVATE_BASE=false "$conda_root/bin/conda" shell.zsh hook) || return
+  unfunction conda
+  eval "$conda_hook" || return
+  conda "$@"
+}

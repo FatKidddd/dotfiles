@@ -48,7 +48,7 @@ for the HTTPS clone of a public repository.
 ## Installer commands
 
 ```sh
-./install.sh                         # link zsh, nvim, tmux
+./install.sh                         # link zsh, nvim, tmux, git, ghostty
 ./install.sh --dry-run               # show the plan, change nothing
 ./install.sh --doctor                # check dependencies and link conflicts
 ./install.sh --bootstrap             # also clone missing shell/tmux plugins
@@ -60,7 +60,7 @@ for the HTTPS clone of a public repository.
 ./install.sh bash                    # opt-in legacy Bash config
 ```
 
-Default packages are explicit, so a new `tests/` or documentation directory can
+Default packages (zsh, nvim, tmux, git, ghostty) are explicit, so a new `tests/` or documentation directory can
 never accidentally become a Stow package. Bash is excluded by default: its older
 configuration needs separate reconciliation with your live Bash files.
 
@@ -102,6 +102,8 @@ Each package mirrors paths relative to your home:
 | `zsh/.zshrc.d/` | `~/.zshrc.d/` |
 | `nvim/.config/nvim/` | `~/.config/nvim/` |
 | `tmux/.tmux.conf` | `~/.tmux.conf` |
+| `git/.gitconfig`, `git/.gitignore_global` | `~/.gitconfig`, `~/.gitignore_global` |
+| `ghostty/.config/ghostty/config` | `~/.config/ghostty/config` |
 | `bash/.bashrc`, `bash/.profile` | `~/.bashrc`, `~/.profile` (opt-in) |
 
 Stow uses relative symlinks, sometimes linking an entire directory when that
@@ -135,7 +137,7 @@ export CONDA_ROOT="$HOME/miniconda3"
 export CXX=clang++
 ```
 
-Zsh tolerates missing Oh My Zsh, eza, pyenv, Cargo, NVM, SDKMAN and Conda.
+Zsh tolerates missing Oh My Zsh, eza, Cargo, NVM, SDKMAN and Conda.
 Clipboard aliases use Wayland/X11 tools when available and retain macOS native
 `pbcopy`/`pbpaste`. GCC 14 is preferred only when installed; CP otherwise uses
 `g++` or your `$CXX`. Do not carry machine-specific standard-library include
@@ -156,9 +158,7 @@ Markdown image and note shortcuts.
 - Keep Ctrl+Space as tmux prefix; prefix+h/j/k/l navigate panes, prefix+R reloads.
 - Bare Ctrl+h/j/k/l and Shift+arrows reach applications.
 
-Next cleanup priorities: choose one Node manager (NVM or Volta), simplify the
-Python manager policy, reconcile the legacy Bash package, and add portable
-Ghostty/Git packages if needed. Retire `llm.zsh` if the clipboard AI workflow is
+Next cleanup priorities: choose one Node manager and reconcile the legacy Bash package. Retire `llm.zsh` if the clipboard AI workflow is
 no longer used. These decisions are separate from safely installing symlinks.
 
 ## Tests
@@ -168,3 +168,45 @@ Requires Python 3 and GNU Stow. No network or real-home mutations:
 ```sh
 python3 tests/test_install.py
 ```
+
+## Python: uv by default, Conda for school
+
+Use `uv python install`, `uv init`, `uv add`, `uv sync` and `uv run` for projects.
+Use `uv tool install` for persistent CLI tools or `uvx` for one-off tool runs.
+No pyenv initialization or Poetry shell helper is loaded. Existing installations
+and project environments were not deleted or migrated. `uv run` does not require
+activating `.venv`; `vup` remains available when you want an activated shell.
+See the [uv guides](https://docs.astral.sh/uv/guides/).
+
+Conda is loaded only on the first explicit `conda` command, with automatic base
+activation disabled for that initialization. School usage stays conventional:
+
+```sh
+conda activate course-env
+# school work
+conda deactivate
+```
+
+An already-active environment inherited from a parent process is preserved.
+Open a fresh terminal from a clean session to stop inheriting old pyenv/Conda state.
+
+## Git and Ghostty
+
+Both are default Stow packages. Git preserves your existing identity, editor,
+fast-forward pull policy and ignore patterns. The ignore path is portable (`~`).
+`~/.gitconfig.local` is an optional untracked override, included last. Do not put
+credentials into the tracked Git config. Ghostty keeps your existing font size
+and Gruvbox Material theme.
+
+Existing regular Git/Ghostty files need `--backup` once when converting them to
+Stow links. Reload Ghostty or open a new window after changing its config.
+
+## Node manager choice
+
+Your current NVM/Volta setup is preserved pending a migration decision.
+[Volta is unmaintained](https://github.com/volta-cli/volta) and its maintainers
+recommend [mise](https://mise.jdx.dev/lang/node.html). For your preference for
+separate tools, use [fnm](https://github.com/Schniz/fnm) for Node version switching
+and uv for Python. fnm supports `.node-version` and `.nvmrc` files and automatic
+version switching in Zsh.
+Before changing managers, inventory global CLI tools and project version files.

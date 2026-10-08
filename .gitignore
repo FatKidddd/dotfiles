@@ -2,3 +2,4 @@
 .zshrc.local
 .stowrc
 .dotfiles-backup-*/
+.gitconfig.local
