@@ -42,29 +42,33 @@ zstyle ':omz:update' mode auto
 ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern cursor root line)
 ZSH_HIGHLIGHT_PATTERNS=('rm -rf *' 'fg=white,bold,bg=red')
 
-plugins=(
-    command-not-found
-    extract
-    git
-    fzf
-    poetry
-    volta
-    vscode
-    zoxide
-    zsh-autosuggestions
-    zsh-syntax-highlighting
-)
 
-source $ZSH/oh-my-zsh.sh
+# Optional integrations should not break the shell on a fresh machine.
+[[ -r "$ZSH/custom/themes/powerlevel10k/powerlevel10k.zsh-theme" ]] || ZSH_THEME=""
+plugins=(git extract command-not-found)
+for _tool in fzf poetry volta zoxide; do
+  command -v "$_tool" >/dev/null 2>&1 && plugins+=("$_tool")
+done
+for _plugin in zsh-autosuggestions zsh-syntax-highlighting; do
+  [[ -r "$ZSH/custom/plugins/$_plugin/$_plugin.plugin.zsh" ]] && plugins+=("$_plugin")
+done
+unset _tool _plugin
+if [[ -r "$ZSH/oh-my-zsh.sh" ]]; then
+  source "$ZSH/oh-my-zsh.sh"
+else
+  autoload -Uz compinit
+  compinit
+  PROMPT='%n@%m %~ %# '
+fi
 
 # ============================================================
 # ALIASES
 # ============================================================
 if command -v nvim > /dev/null 2>&1; then alias vim='nvim'; fi
 
-alias conf="nvim ~/dotfiles/zsh/.zshrc"
-alias nconf="nvim ~/dotfiles/nvim/.config/nvim/init.lua"
-alias tconf="nvim ~/dotfiles/tmux/.tmux.conf"
+alias conf="nvim ~/.zshrc"
+alias nconf="nvim ~/.config/nvim/init.lua"
+alias tconf="nvim ~/.tmux.conf"
 alias notes="cd ~/Desktop/Notes && nvim"
 alias nus="cd ~/Desktop/NUS/2526S1"
 
@@ -76,9 +80,10 @@ function poet() {
 }
 alias upev="sudo apt update -y && sudo apt full-upgrade -y && sudo apt autoremove -y && sudo apt clean -y && sudo apt autoclean -y"
 
-alias ls="eza -ah --color=auto --group-directories-first --icons"
-alias lh="eza -ah --color=auto --group-directories-first --icons"
-alias l="eza -ah --color=auto --group-directories-first --icons"
+if command -v eza >/dev/null 2>&1; then
+  alias ls="eza -ah --color=auto --group-directories-first --icons"
+  alias lh=ls l=ls
+fi
 alias :q="exit"
 alias lg="lazygit"
 alias c="clear"
@@ -87,8 +92,13 @@ alias cdde="cd ~/Desktop/"
 alias cddo="cd ~/Downloads/"
 alias gitzip="git archive HEAD -o \${PWD##*/}.zip"
 
-alias pbcopy='xsel --clipboard --input'
-alias pbpaste='xsel --clipboard --output'
+if command -v wl-copy >/dev/null 2>&1; then
+  alias pbcopy='wl-copy'
+  alias pbpaste='wl-paste'
+elif command -v xsel >/dev/null 2>&1; then
+  alias pbcopy='xsel --clipboard --input'
+  alias pbpaste='xsel --clipboard --output'
+fi
 
 alias inspect-evm-errors="$HOME/projects/sec/helpers/evm/get-error-selectors.sh"
 alias inspect-evm="$HOME/projects/sec/helpers/evm/inspect-contract.sh"
@@ -102,8 +112,8 @@ if command -v pyenv >/dev/null 2>&1; then eval "$(pyenv init -)"; fi
 [[ -r "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
 
 # Build tools use GCC 14 by default. Projects still own their language standard.
-export CC="gcc-14"
-export CXX="g++-14"
+if command -v gcc-14 >/dev/null 2>&1; then export CC="${CC:-gcc-14}"; fi
+if command -v g++-14 >/dev/null 2>&1; then export CXX="${CXX:-g++-14}"; fi
 
 # Never force one compiler's standard-library headers onto another compiler.
 unset CPLUS_INCLUDE_PATH C_INCLUDE_PATH CPATH
@@ -139,6 +149,8 @@ unset _f
 # SECRETS — local only, never tracked by git
 # ============================================================
 [[ -f ~/.secrets ]] && source ~/.secrets
+# Machine-specific paths and overrides live outside Git.
+[[ -r ~/.zshrc.local ]] && source ~/.zshrc.local
 
 # ============================================================
 # RUNTIME INIT — must stay at bottom (sdkman requirement)
@@ -149,15 +161,13 @@ export NVM_DIR="$HOME/.nvm"
 export SDKMAN_DIR="$HOME/.sdkman"
 [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
 
-# conda (managed by `conda init` — do not edit manually)
-__conda_setup="$('/home/justin/anaconda3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
-else
-    if [ -f "/home/justin/anaconda3/etc/profile.d/conda.sh" ]; then
-        . "/home/justin/anaconda3/etc/profile.d/conda.sh"
-    else
-        export PATH="/home/justin/anaconda3/bin:$PATH"
-    fi
+# Initialize Conda only when installed; allow a machine-specific installation root.
+_conda_root=${CONDA_ROOT:-$HOME/anaconda3}
+if [[ -x "$_conda_root/bin/conda" ]]; then
+  if _conda_setup=$("$_conda_root/bin/conda" shell.zsh hook 2>/dev/null); then
+    eval "$_conda_setup"
+  elif [[ -r "$_conda_root/etc/profile.d/conda.sh" ]]; then
+    source "$_conda_root/etc/profile.d/conda.sh"
+  fi
 fi
-unset __conda_setup
+unset _conda_root _conda_setup

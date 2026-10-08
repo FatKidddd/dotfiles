@@ -1,1 +1,4 @@
 .secrets
+.zshrc.local
+.stowrc
+.dotfiles-backup-*/

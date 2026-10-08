@@ -1,6 +1,6 @@
 local cxx = vim.env.CXX
 if not cxx or cxx == '' then
-  cxx = 'g++-14'
+  cxx = vim.fn.executable 'g++-14' == 1 and 'g++-14' or 'g++'
 end
 
 -- Competitive programming loads only for C++ buffers or CompetiTest commands.
